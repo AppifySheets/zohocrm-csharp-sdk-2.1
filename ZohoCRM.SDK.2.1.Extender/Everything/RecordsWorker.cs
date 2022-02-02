@@ -45,7 +45,7 @@ public static class RecordsWorker
 
             var result = records
                 .Value
-                .Chunk(90)
+                .ChunkLocal(90)
                 .Select(recordTs =>
                 {
                     var paramInstance = new ParameterMap();

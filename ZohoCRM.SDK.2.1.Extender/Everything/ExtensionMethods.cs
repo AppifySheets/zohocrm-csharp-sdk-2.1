@@ -77,7 +77,7 @@ public static class ExtensionMethods
             : Result.Failure<(T1 t1, T2 t2)>(resultT1.GetFailureOrEmpty().Join(resultT2.GetFailureOrEmpty()));
 
 
-    public static IEnumerable<IEnumerable<TSource>> Chunk<TSource>(this IEnumerable<TSource> source, int chunkSize)
+    public static IEnumerable<IEnumerable<TSource>> ChunkLocal<TSource>(this IEnumerable<TSource> source, int chunkSize)
     {
         for (var i = 0; i < source.Count(); i += chunkSize)
             yield return source.Skip(i).Take(chunkSize);
