@@ -44,8 +44,15 @@ public static class ZohoItemOperations
         var parsedDataCores = ParseManyResults(zohoItemBase, tuple => () => tuple.ro.UpdateRecords(tuple.moduleName, tuple.bw, tuple.hm));
         if (parsedDataCores.IsFailure) return parsedDataCores.ConvertFailure<IEnumerable<OriginalWithSameResult<ZohoItemBaseWithId<T>>>>();
 
-        var updatedResult = parsedDataCores
-            .Value
+        OriginalWithSameResult<ZohoItemBaseWithId<T>> Get(ZohoItemBaseWithId<T> original, Record? maybeResult)
+            => maybeResult != null
+                ? original.Create(original.SetZohoId(maybeResult.Id!.Value))
+                : original.CreateFailure($"Update failed for {original.ZohoId}");
+
+        var parsedWithInitial = zohoItemBase.Select(i => Get(i, parsedDataCores.Value.SingleOrDefault(pdc => pdc.IsSuccess && pdc.Value.Id == i.ZohoId).Value))
+            .AsReadOnlyList();
+
+        var updatedResult = parsedWithInitial
             .Select(parsedDataCore =>
                 parsedDataCore.Original.Create(parsedDataCore.Result.OnFailureCompensate(error => error.Contains("the id given seems to be invalid")
                     ? parsedDataCore.Original.CreateCore()
@@ -102,10 +109,14 @@ public static class ZohoItemOperations
 
         if (zohoItemBaseWithIds.Any(z => z.ZohoId.HasValue)) throw new InvalidOperationException("Can't be CREATING zohoItemBase with zohoId specified");
 
-        var parsedDataCores = ParseManyResults(zohoItemBaseWithIds, tuple => () => tuple.ro.CreateRecords(tuple.moduleName, tuple.bw, tuple.hm));
-        if (parsedDataCores.IsFailure) return parsedDataCores.ConvertFailure<IEnumerable<OriginalWithSameResult<ZohoItemBaseWithId<T>>>>();
+        var parsedDataCores = zohoItemBaseWithIds
+            .Select(z => z.Create(ParseResult(z, tuple => () => tuple.ro.CreateRecords(tuple.moduleName, tuple.bw, tuple.hm))))
+            .AsReadOnlyList();
+        // var parsedDataCores = ParseManyResults(zohoItemBaseWithIds, tuple => () => tuple.ro.CreateRecords(tuple.moduleName, tuple.bw, tuple.hm));
+        
+        // if (parsedDataCores.IsFailure) return parsedDataCores.ConvertFailure<IEnumerable<OriginalWithSameResult<ZohoItemBaseWithId<T>>>>();
 
-        var result = parsedDataCores.Value.Select(parsedDataCore =>
+        var result = parsedDataCores.Select(parsedDataCore =>
             parsedDataCore.Result.IsSuccess
                 ? parsedDataCore
                 : parsedDataCore.Result.IsFailure
@@ -235,7 +246,7 @@ public static class ZohoItemOperations
     }
 
     static Result<ZohoItemBaseWithId<T>> ParseResult<T>(ZohoItemBaseWithId<T> zohoItemBase,
-        Func<(BodyWrapper bw, HeaderMap hm, RecordOperations ro), Func<APIResponse<ActionHandler>>> apiResponseHandler)
+        Func<(string moduleName, BodyWrapper bw, HeaderMap hm, RecordOperations ro), Func<APIResponse<ActionHandler>>> apiResponseHandler)
         where T : ZohoItemBase
     {
         if (!Initialize.IsInitialized) throw new InvalidOperationException("Please initialize the SDK first!");
@@ -262,7 +273,7 @@ public static class ZohoItemOperations
                 ;
         }
 
-        var parsedResult = ParseResultCore(apiResponseHandler((bodyWrapper, headerInstance2, recordOperations)));
+        var parsedResult = ParseResultCore(apiResponseHandler((zohoItemBase.Item.ZohoModule.ToString(), bodyWrapper, headerInstance2, recordOperations)));
 
         var withBind = parsedResult
             // .Map(r => )
@@ -271,55 +282,71 @@ public static class ZohoItemOperations
         return withBind;
     }
 
-    static Result<IEnumerable<OriginalWithSameResult<ZohoItemBaseWithId<T>>>> ParseManyResults<T>(IEnumerable<ZohoItemBaseWithId<T>> zohoItemBases,
+    static Result<IEnumerable<Result<Record>>> ParseManyResults<T>(IEnumerable<ZohoItemBaseWithId<T>> zohoItemBases,
         Func<(string moduleName, BodyWrapper bw, HeaderMap hm, RecordOperations ro), Func<APIResponse<ActionHandler>>> apiResponseHandler) where T : ZohoItemBase
     {
-        var zohoItemBasesOrderedArol = zohoItemBases.Select((zohoItemBase, index) => new {zohoItemBase, index}).OrderBy(z => z.zohoItemBase.Item.RecordIdentifier).AsReadOnlyList();
+        var zohoItemBasesOrderedAllArol = zohoItemBases.Select((zohoItemBase, index) => new {zohoItemBase, index}).OrderBy(z => z.zohoItemBase.Item.RecordIdentifier).AsReadOnlyList();
 
-        if (!zohoItemBasesOrderedArol.Any()) return Result.Success(Enumerable.Empty<OriginalWithSameResult<ZohoItemBaseWithId<T>>>());
+        if (!zohoItemBasesOrderedAllArol.Any()) return Result.Success(Enumerable.Empty<Result<Record>>());
 
         if (!Initialize.IsInitialized) throw new InvalidOperationException("Please initialize the SDK first!");
 
-        var operationType = zohoItemBasesOrderedArol.Select(z => z.zohoItemBase.OperationTypeNeededInZoho).Distinct().AsReadOnlyList();
-        var zohoModule = zohoItemBasesOrderedArol.Select(z => z.zohoItemBase.Item.ZohoModule).Distinct().AsReadOnlyList();
+        var operationType = zohoItemBasesOrderedAllArol.Select(z => z.zohoItemBase.OperationTypeNeededInZoho).Distinct().AsReadOnlyList();
+        var zohoModule = zohoItemBasesOrderedAllArol.Select(z => z.zohoItemBase.Item.ZohoModule).Distinct().AsReadOnlyList();
 
         if (operationType.Count != 1) throw new InvalidOperationException("No no");
         if (zohoModule.Count != 1) throw new InvalidOperationException("No no");
 
-        var bodyWrapper = new BodyWrapper();
-        var recordOperations = new RecordOperations();
-        var headerInstance2 = new HeaderMap();
-        bodyWrapper.Data = zohoItemBasesOrderedArol.Select(z => z.zohoItemBase.ZohoRecord).ToList();
+        var parsedDataResult = zohoItemBasesOrderedAllArol
+            .ChunkLocal(100)
+            .Select(zohoItemBasesOrdered =>
+            {
+                var itemBasesOrdered = zohoItemBasesOrdered.AsReadOnlyList();
+                
+                if (itemBasesOrdered.Count > 100) throw new InvalidOperationException("Can't process more than 100 items!");
+                
+                var bodyWrapper = new BodyWrapper();
+                var recordOperations = new RecordOperations();
+                var headerInstance2 = new HeaderMap();
+                bodyWrapper.Data = itemBasesOrdered.Select(z => z.zohoItemBase.ZohoRecord).ToList();
 
-        var parsedResult = apiResponseHandler((zohoModule.Single().ToString(), bodyWrapper, headerInstance2, recordOperations));
-        var parseFuncResult = Result.Try(parsedResult, e => e.ToString());
+                var parsedResult = apiResponseHandler((zohoModule.Single().ToString(), bodyWrapper, headerInstance2, recordOperations));
+                var parseFuncResult = Result.Try(parsedResult, e => e.ToString());
 
-        if (parseFuncResult.IsFailure) return parseFuncResult.ConvertFailure<IEnumerable<OriginalWithSameResult<ZohoItemBaseWithId<T>>>>();
+                if (parseFuncResult.IsFailure) parseFuncResult.ConvertFailure<IEnumerable<Result<Record>>>();
 
-        var parsedDataResult = RecordsParser.ParseData(parseFuncResult.Value);
-        // .Use(r => r.IsFailure
-        //     ? r.ConvertFailure<Result<Record>>()
-        //     : r.Value.Select(ri => ri) )
+                var parsedData = RecordsParser.ParseData(parseFuncResult.Value);
+                if (parseFuncResult.IsFailure) parseFuncResult.ConvertFailure<IEnumerable<Result<Record>>>();
+                
+                return parsedData.Value;
+            }).AsReadOnlyList();
+    // .Use(r => r.IsFailure
+    //     ? r.ConvertFailure<Result<Record>>()
+    //     : r.Value.Select(ri => ri) )
 
-        if (parsedDataResult.IsFailure) return parsedDataResult.ConvertFailure<IEnumerable<OriginalWithSameResult<ZohoItemBaseWithId<T>>>>();
+    // if (parsedDataResult.IsFailure) return parsedDataResult.ConvertFailure<IEnumerable<Result<Record>>>();
 
-        // if (parseFuncResult.IsSuccess)
-        //     return
-        //
-        // if (parseFuncResult.IsFailure)
-        // {
-        // }
+    var finalResult = parsedDataResult.SelectMany(i => i.Select(ii => ii));
 
+    return Result.Success(finalResult);
 
-        var parsedDataResultIndexed = parsedDataResult.Value.Select((data, index) => new {data, index}).AsReadOnlyList();
-
-        var zohoItemBasesWithParsedData = zohoItemBasesOrderedArol.Select(z => new {z.zohoItemBase, Data = parsedDataResultIndexed.Single(pd => pd.index == z.index).data}).AsReadOnlyList();
-
-        var withBind = zohoItemBasesWithParsedData
-            .Select(r => new {r.zohoItemBase, mapped = r.Data.Map(ri => r.zohoItemBase.SetZohoId(ri.Id!.Value))}).AsReadOnlyList();
-
-
-        return Result.Success(withBind.Select(b => b.zohoItemBase.Create(b.mapped)));
+    // if (parseFuncResult.IsSuccess)
+    //     return
+    //
+    // if (parseFuncResult.IsFailure)
+    // {
+    // }
+    //
+    //
+    // var parsedDataResultIndexed = parsedDataResult.Value.Select((data, index) => new {data, index}).AsReadOnlyList();
+    //
+    // var zohoItemBasesWithParsedData = zohoItemBasesOrderedArol.Select(z => new {z.zohoItemBase, Data = parsedDataResultIndexed.Single(pd => pd.index == z.index).data}).AsReadOnlyList();
+    //
+    // var withBind = zohoItemBasesWithParsedData
+    //     .Select(r => new {r.zohoItemBase, mapped = r.Data.Map(ri => r.zohoItemBase.SetZohoId(ri.Id!.Value))}).AsReadOnlyList();
+    //
+    //
+    // return Result.Success(withBind.Select(b => b.zohoItemBase.Create(b.mapped)));
     }
 
     static class ZohoApiErrorParser
@@ -406,6 +433,7 @@ public static class OriginalWithResultExtensions
     // public static OriginalWithResult<TOriginal, TResult> Create<TOriginal, TResult>(this TOriginal original, Result<TResult> result) => new(original, result);
     public static OriginalWithSameResult<TOriginal> Create<TOriginal>(this TOriginal original, Result<TOriginal> result) => new(original, result);
     public static OriginalWithSameResult<TOriginal> CreateSuccess<TOriginal>(this TOriginal original) => new(original, Result.Success(original));
+    public static OriginalWithSameResult<TOriginal> CreateFailure<TOriginal>(this TOriginal original, string error) => new(original, Result.Failure<TOriginal>(error));
 
     public static OriginalWithSameResult<TOriginal> CreateFromSuccess<TOriginal>(this Result<TOriginal> result)
     {
