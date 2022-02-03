@@ -259,7 +259,7 @@ public static class ZohoItemOperations
         Result<Record> ParseResultCore(Func<APIResponse<ActionHandler>> parseFunc)
         {
             Result<TY> EnrichFailure<TY>(Result<TY> result)
-                => result.IsSuccess ? result : Result.Failure<TY>($"{result.Error}\r\nError saving [{zohoItemBase.Item.ZohoModule}][{zohoItemBase.Item.RecordIdentifier}]");
+                => result.IsSuccess ? result : Result.Failure<TY>($"{result.Error}\r\nError saving [{zohoItemBase.Item.ZohoModule}][{zohoItemBase.Item.RecordIdentifierExtended}]");
 
             var parseFuncResult = Result.Try(parseFunc, e => e.ToString());
 
@@ -285,7 +285,7 @@ public static class ZohoItemOperations
     static Result<IEnumerable<Result<Record>>> ParseManyResults<T>(IEnumerable<ZohoItemBaseWithId<T>> zohoItemBases,
         Func<(string moduleName, BodyWrapper bw, HeaderMap hm, RecordOperations ro), Func<APIResponse<ActionHandler>>> apiResponseHandler) where T : ZohoItemBase
     {
-        var zohoItemBasesOrderedAllArol = zohoItemBases.Select((zohoItemBase, index) => new {zohoItemBase, index}).OrderBy(z => z.zohoItemBase.Item.RecordIdentifier).AsReadOnlyList();
+        var zohoItemBasesOrderedAllArol = zohoItemBases.Select((zohoItemBase, index) => new {zohoItemBase, index}).OrderBy(z => z.zohoItemBase.Item.RecordIdentifierExtended).AsReadOnlyList();
 
         if (!zohoItemBasesOrderedAllArol.Any()) return Result.Success(Enumerable.Empty<Result<Record>>());
 
