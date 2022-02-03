@@ -6,6 +6,7 @@ using Com.Zoho.Crm.API;
 using Com.Zoho.Crm.API.Record;
 using Com.Zoho.Crm.API.Util;
 using CSharpFunctionalExtensions;
+using Serilog;
 
 namespace ZohoCRM.SDK_2_1.Extender.BaseTypes.Everything;
 
@@ -110,7 +111,13 @@ public static class ZohoItemOperations
         if (zohoItemBaseWithIds.Any(z => z.ZohoId.HasValue)) throw new InvalidOperationException("Can't be CREATING zohoItemBase with zohoId specified");
 
         var parsedDataCores = zohoItemBaseWithIds
-            .Select(z => z.Create(ParseResult(z, tuple => () => tuple.ro.CreateRecords(tuple.moduleName, tuple.bw, tuple.hm))))
+            .AsParallel()
+            .WithDegreeOfParallelism(10)
+            .Select(z => z.Create(ParseResult(z, tuple =>
+            {
+                Log.Information("Creating {Module} - {Record}", tuple.moduleName, z.Item.RecordIdentifier);
+                return () => tuple.ro.CreateRecords(tuple.moduleName, tuple.bw, tuple.hm);
+            })))
             .AsReadOnlyList();
         // var parsedDataCores = ParseManyResults(zohoItemBaseWithIds, tuple => () => tuple.ro.CreateRecords(tuple.moduleName, tuple.bw, tuple.hm));
         
@@ -310,6 +317,8 @@ public static class ZohoItemOperations
                 var headerInstance2 = new HeaderMap();
                 bodyWrapper.Data = itemBasesOrdered.Select(z => z.zohoItemBase.ZohoRecord).ToList();
 
+                Log.Information("Updating {Module} - {RecordCount} items", zohoModule.Single(), itemBasesOrdered.Count);
+                
                 var parsedResult = apiResponseHandler((zohoModule.Single().ToString(), bodyWrapper, headerInstance2, recordOperations));
                 var parseFuncResult = Result.Try(parsedResult, e => e.ToString());
 
