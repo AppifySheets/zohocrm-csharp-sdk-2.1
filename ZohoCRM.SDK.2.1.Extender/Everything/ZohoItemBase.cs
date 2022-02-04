@@ -67,7 +67,8 @@ public abstract class ZohoItemBase
     public abstract ZohoModules ZohoModule { get; }
 
     public abstract string RecordIdentifierExtended { get; }
-    public abstract string RecordIdentifier { get; }
+    public abstract string SourceRecordIdentifier { get; }
+    public abstract string SourceRecordTypeName { get; }
 
     public abstract Record CreateRecord(Record initialRecord);
 }
