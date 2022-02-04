@@ -47,6 +47,12 @@ public static class ZohoItemOperations
         var parsedDataCores = ParseManyResults(zohoItemBase, tuple => () => tuple.ro.UpdateRecords(tuple.moduleName, tuple.bw, tuple.hm));
         if (parsedDataCores.IsFailure) return parsedDataCores.ConvertFailure<IReadOnlyCollection<OriginalWithSameResult<ZohoItemBaseWithId<T>>>>();
 
+        parsedDataCores.Value.Where(v => v.IsFailure)
+                .ForEach(c =>
+                {
+                    Log.Error("Error updating record with {Error}", c.Error);
+                });
+        
         OriginalWithSameResult<ZohoItemBaseWithId<T>> Get(ZohoItemBaseWithId<T> original, Record? maybeResult)
             => maybeResult != null
                 ? original.Create(original.SetZohoId(maybeResult.Id!.Value))
