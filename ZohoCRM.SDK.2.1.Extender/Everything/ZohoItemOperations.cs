@@ -56,7 +56,7 @@ public static class ZohoItemOperations
         OriginalWithSameResult<ZohoItemBaseWithId<T>> Get(ZohoItemBaseWithId<T> original, Record? maybeResult)
             => maybeResult != null
                 ? original.Create(original.SetZohoId(maybeResult.Id!.Value))
-                : original.CreateFailure($"Update failed for {original.ZohoId}");
+                : original.CreateFailure($"Update failed for {original.ZohoId} - the id given seems to be invalid");
 
         var parsedWithInitial = zohoItemBase.Select(i => Get(i, parsedDataCores.Value.SingleOrDefault(pdc => pdc.IsSuccess && pdc.Value.Id == i.ZohoId).Value))
             .AsReadOnlyList();
@@ -64,7 +64,7 @@ public static class ZohoItemOperations
         var updatedResult = parsedWithInitial
                 .Select(parsedDataCore =>
                     parsedDataCore.Original.Create(parsedDataCore.Result.OnFailureCompensate(error => error.Contains("the id given seems to be invalid")
-                        ? parsedDataCore.Original.CreateCore()
+                        ? parsedDataCore.Original.UpdateToCreate().CreateCore()
                         : parsedDataCore.Result)))
                 .AsReadOnlyList()
             ;

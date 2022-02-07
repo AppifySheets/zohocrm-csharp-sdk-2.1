@@ -3,6 +3,7 @@ using System.Linq;
 using Com.Zoho.Crm.API;
 using Com.Zoho.Crm.API.Record;
 using CSharpFunctionalExtensions;
+using Serilog;
 
 namespace ZohoCRM.SDK_2_1.Extender.BaseTypes.Everything;
 
@@ -79,6 +80,8 @@ public static class RecordsWorker
         var headerInstance = new HeaderMap();
 
         var companyRecordsMany = RecordsParser.ParseData(recordOperations.GetRecord(id, moduleName.ToString(), parameterMap, headerInstance));
+
+        Log.Information("Received information from Zoho for {ModuleName} with Id {Id}", moduleName, id);
         return companyRecordsMany.Map(c => c.Single());
     }
 

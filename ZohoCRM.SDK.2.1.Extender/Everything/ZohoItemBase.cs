@@ -13,38 +13,63 @@ public static class ZohoItemBaseWithId
 
 public class ZohoItemBaseWithId<T> where T : ZohoItemBase
 {
-    public ZohoItemBaseWithId(Maybe<long> zohoId, T item)
+    public ZohoItemBaseWithId(Maybe<long> zohoId, T item, bool allowZohoIdDifferentFromItem = false)
     {
         this.zohoId = zohoId;
         Item = item;
 
-        if (this.zohoId.HasValue && item.ZohoId.HasValue && this.zohoId.Value != item.ZohoId.Value)
+        if (!allowZohoIdDifferentFromItem && this.zohoId.HasValue && item.ZohoId.HasValue && this.zohoId.Value != item.ZohoId.Value)
             throw new InvalidOperationException($"Existing and New ZohoId's can't be different: Existing [{item.ZohoId}], New [{zohoId.Value}]");
+    }
+    
+    // public ZohoItemBaseWithId(long zohoId, T item)
+    // {
+    //     this.zohoId = zohoId;
+    //     Item = item;
+    //
+    //     if (this.zohoId.HasValue && item.ZohoId.HasValue && this.zohoId.Value != item.ZohoId.Value)
+    //         throw new InvalidOperationException($"Existing and New ZohoId's can't be different: Existing [{item.ZohoId}], New [{zohoId}]");
+    // }
+
+    ZohoItemBaseWithId(T item, bool forceCreate)
+    {
+        Item = item;
+        ForceCreate = forceCreate;
     }
 
     // public ZohoItemBaseWithId(T item) : this(Maybe.None, item)
     // {
     // }
 
-    public OperationTypeNeededInZohoEnum OperationTypeNeededInZoho => ZohoId
-        .HasNoValue
-        // ReSharper disable once ParameterOnlyUsedForPreconditionCheck.Local
-        .UseThenReturnSelf(hasNoValue =>
-        {
-            if (hasNoValue && Item.OperationTypeNeededInZoho != OperationTypeNeededInZohoEnum.Create)
-                throw new InvalidOperationException("You must specify OperationTypeNeededInZohoEnum.Create for when ZohoId is missing");
-        })
-        ? OperationTypeNeededInZohoEnum.Create
-        : Item.OperationTypeNeededInZoho == OperationTypeNeededInZohoEnum.Create // ZohoItemBase doesn't YET know that the record has already been updated
-            ? OperationTypeNeededInZohoEnum.Update
-            : Item.OperationTypeNeededInZoho;
+    public OperationTypeNeededInZohoEnum OperationTypeNeededInZoho =>
+        ForceCreate
+            ? OperationTypeNeededInZohoEnum.Create
+            : ZohoId
+                .HasNoValue
+                // ReSharper disable once ParameterOnlyUsedForPreconditionCheck.Local
+                .UseThenReturnSelf(hasNoValue =>
+                {
+                    if (hasNoValue && Item.OperationTypeNeededInZoho != OperationTypeNeededInZohoEnum.Create)
+                        throw new InvalidOperationException("You must specify OperationTypeNeededInZohoEnum.Create for when ZohoId is missing");
+                })
+                ? OperationTypeNeededInZohoEnum.Create
+                : Item.OperationTypeNeededInZoho == OperationTypeNeededInZohoEnum.Create // ZohoItemBase doesn't YET know that the record has already been updated
+                    ? OperationTypeNeededInZohoEnum.Update
+                    : Item.OperationTypeNeededInZoho;
 
     readonly Maybe<long> zohoId;
 
-    public Maybe<long> ZohoId => Item.ZohoId.HasValue ? Item.ZohoId.Value : zohoId;
-    public T Item { get; }
+    public Maybe<long> ZohoId => ForceCreate
+        ? Maybe.None
+        : Item.ZohoId.HasValue
+            ? Item.ZohoId.Value
+            : zohoId;
 
-    public ZohoItemBaseWithId<T> SetZohoId(long zohoIdParam) => new(zohoIdParam, Item);
+    public T Item { get; }
+    public bool ForceCreate { get; }
+
+    public ZohoItemBaseWithId<T> SetZohoId(long zohoIdParam) => new(zohoIdParam, Item, true);
+    public ZohoItemBaseWithId<T> UpdateToCreate() => new(Item, true);
     public ZohoItemBaseWithId<T> UpdateItem(T item) => new(zohoId, item);
     public ZohoItemBaseWithId<T> UpdateItem(Func<T, T> itemFunc) => new(zohoId, itemFunc(Item));
 
