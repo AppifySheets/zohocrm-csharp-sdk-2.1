@@ -69,11 +69,11 @@ public static class ZohoItemOperations
                 .AsReadOnlyList()
             ;
 
-        var sourceModuleName = zohoItemBase.Select(z => z.Item.SourceRecordTypeName).Distinct().Single().ToString();
+        // var sourceModuleName = zohoItemBase.Select(z => z.Item.SourceRecordTypeName).Distinct().Single().ToString();
 
         updatedResult.ForEach(ur =>
         {
-            updateHandler((sourceModuleName, ur.Original.Item.SourceRecordIdentifier, ur.Result.Use(r => r.IsSuccess ? r.Value.ZohoId.Value : r.ConvertFailure<long>()),
+            updateHandler((ur.Original.Item.SourceRecordTypeName, ur.Original.Item.SourceRecordIdentifier, ur.Result.Use(r => r.IsSuccess ? r.Value.ZohoId.Value : r.ConvertFailure<long>()),
                 OperationTypeNeededInZohoEnum.Update));
         });
 
@@ -137,8 +137,8 @@ public static class ZohoItemOperations
         var counter = zohoItemBaseWithIds.Count;
         
         var parsedDataCores = zohoItemBaseWithIds
-            // .AsParallel()
-            // .WithDegreeOfParallelism(5)
+            .AsParallel()
+            .WithDegreeOfParallelism(10)
             .Select(z =>
             {
                 var value2Return = z.Create(ParseResult(z, tuple =>
