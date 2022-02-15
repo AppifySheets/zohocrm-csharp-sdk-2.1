@@ -66,13 +66,18 @@ public static class RecordsParser
         public RecordT(Record record)
         {
             //Get the KeyValue map
-            KeyValues = record.GetKeyValues().Select(k => (k.Key, k.Value)).ToList().AsReadOnly()!;
-            NonEmptyKeyValues = KeyValues.Where(k => k.Value != null).ToList().AsReadOnly();
+            KeyValues = record.GetKeyValues().Select(k => (k.Key, k.Value))
+                .OrderBy(k => k.Key)
+                .AsReadOnlyList()!;
+            
+            NonEmptyKeyValues = KeyValues
+                .Where(k => k.Value != null)
+                .AsReadOnlyList();
             Record = record;
         }
 
         public Record Record { get; }
-        public ReadOnlyCollection<(string Key, object? Value)> KeyValues { get; }
-        public ReadOnlyCollection<(string key, object? value)> NonEmptyKeyValues { get; }
+        public IReadOnlyCollection<(string Key, object? Value)> KeyValues { get; }
+        public IReadOnlyCollection<(string key, object? value)> NonEmptyKeyValues { get; }
     }
 }

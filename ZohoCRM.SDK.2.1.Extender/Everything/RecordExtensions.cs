@@ -49,6 +49,13 @@ public static class RecordExtensions
         return record;
     }
     
+    public static Record AddSubmoduleValue<T>(this Record record, string fieldName, T fieldValue)
+    {
+        record.AddFieldValue(new Field<T>(fieldName), fieldValue);
+
+        return record;
+    }
+    
     public static Record AddFieldValueAsString<T>(this Record record, string fieldName, T fieldValue)
     {
         record.AddFieldValue(new Field<string?>(fieldName), fieldValue?.ToString());
