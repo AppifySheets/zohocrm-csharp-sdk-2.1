@@ -131,8 +131,8 @@ public static class ZohoItemOperations
 
         if (!zohoItemBaseWithIds.Any()) return Result.Success(Enumerable.Empty<OriginalWithSameResult<ZohoItemBaseWithId<T>>>());
 
-        var sourceModuleName = zohoItemBaseWithIds.Select(z => z.Item.SourceRecordTypeName).Distinct().Single().ToString();
-        Log.Information("Intending to create {Module} - {Record} records", sourceModuleName, zohoItemBaseWithIds.Count);
+        // var sourceModuleName = zohoItemBaseWithIds.Select(z => z.Item.SourceRecordTypeName).Distinct().Single().ToString();
+        // Log.Information("Intending to create {Module} - {Record} records", sourceModuleName, zohoItemBaseWithIds.Count);
 
         var counter = zohoItemBaseWithIds.Count;
         
@@ -143,11 +143,11 @@ public static class ZohoItemOperations
             {
                 var value2Return = z.Create(ParseResult(z, tuple =>
                 {
-                    Log.Information("Creating {Module} - {Record} ({RemainingCount}/{TotalCount})", sourceModuleName, z.Item.SourceRecordIdentifier, counter--, zohoItemBaseWithIds.Count);
+                    Log.Information("Creating {Module} - {Record} ({RemainingCount}/{TotalCount})",  tuple.moduleName, z.Item.SourceRecordIdentifier, counter--, zohoItemBaseWithIds.Count);
                     return () => tuple.ro.CreateRecords(tuple.moduleName, tuple.bw, tuple.hm);
                 }));
 
-                updateHandler((sourceModuleName, value2Return.Original.Item.SourceRecordIdentifier, value2Return.Result.Use(r => r.IsSuccess ? r.Value.ZohoId.Value : r.ConvertFailure<long>()),
+                updateHandler((value2Return.Original.Item.SourceRecordTypeName, value2Return.Original.Item.SourceRecordIdentifier, value2Return.Result.Use(r => r.IsSuccess ? r.Value.ZohoId.Value : r.ConvertFailure<long>()),
                     OperationTypeNeededInZohoEnum.Create));
 
                 return value2Return;
