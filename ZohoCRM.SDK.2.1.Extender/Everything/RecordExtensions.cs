@@ -1,4 +1,5 @@
 ﻿using Com.Zoho.Crm.API.Record;
+using Com.Zoho.Crm.API.Users;
 using Com.Zoho.Crm.API.Util;
 
 namespace ZohoCRM.SDK_2_1.Extender.BaseTypes.Everything;
@@ -29,6 +30,16 @@ public static class RecordExtensions
         record.AddFieldValue(new Field<Record>(fieldName), dummyRecord);
         return record;
     }
+    
+    public static Record SetOwner(this Record record, long ownerId)
+    {
+        // var dummyRecord = new Record();
+        // dummyRecord.AddFieldValue(Products.OWNER, ownerId);
+        
+        // record.AddFieldValue(Products.OWNER, ownerId);
+        record.AddKeyValue(Products.OWNER.APIName, new User{Id = ownerId});
+        return record;
+    }
 
     public static Record AddRecordValue(this Record record, string fieldName, Record value)
     {
@@ -42,7 +53,7 @@ public static class RecordExtensions
         return record;
     }
 
-    public static Record AddFieldValue<T>(this Record record, string fieldName, T fieldValue)
+    public static Record AddFieldValueX<T>(this Record record, string fieldName, T fieldValue)
     {
         record.AddFieldValue(new Field<T>(fieldName), fieldValue);
 
@@ -66,7 +77,7 @@ public static class RecordExtensions
     public static Record CreateRecordWith<T>(this string fieldName, T fieldValue)
     {
         var record = new Record();
-        record.AddFieldValue(fieldName, fieldValue);
+        record.AddFieldValueX(fieldName, fieldValue);
         return record;
     }
 
