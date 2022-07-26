@@ -21,7 +21,7 @@ public class ZohoItemBaseWithId<T> where T : ZohoItemBase
         if (!allowZohoIdDifferentFromItem && this.zohoId.HasValue && item.ZohoId.HasValue && this.zohoId.Value != item.ZohoId.Value)
             throw new InvalidOperationException($"Existing and New ZohoId's can't be different: Existing [{item.ZohoId}], New [{zohoId.Value}]");
     }
-    
+
     // public ZohoItemBaseWithId(long zohoId, T item)
     // {
     //     this.zohoId = zohoId;
@@ -79,7 +79,11 @@ public class ZohoItemBaseWithId<T> where T : ZohoItemBase
         if (zohoId.HasValue)
             record.AddKeyValue("id", zohoId.Value);
 
-        return Item.CreateRecord(record);
+        var item = Item.CreateRecord(record);
+
+        return Item.OwnerId.HasValue
+            ? item.SetOwner(Item.OwnerId.Value)
+            : item;
     }
 
     public Record ZohoRecord => ZohoRecordInternal();
@@ -94,6 +98,6 @@ public abstract class ZohoItemBase
     public abstract string RecordIdentifierExtended { get; }
     public abstract string SourceRecordIdentifier { get; }
     public abstract string SourceRecordTypeName { get; }
-
+    public abstract Maybe<long> OwnerId { get; }
     public abstract Record CreateRecord(Record initialRecord);
 }

@@ -23,7 +23,7 @@ public static class ResultExtensions
 
 public static class ZohoItemOperations
 {
-    static Result<ZohoItemBaseWithId<T>> UpdateCore<T>(this ZohoItemBaseWithId<T> zohoItemBase) where T : ZohoItemBase
+    static Result<ZohoItemBaseWithId<T>> UpdateCore<T>(this ZohoItemBaseWithId<T> zohoItemBase, Maybe<string> duplicateDataApiName2Handle) where T : ZohoItemBase
     {
         if (!zohoItemBase.ZohoId.HasValue) throw new InvalidOperationException("Can't be updating zohoItemBase w/o zohoId specified");
 
@@ -32,13 +32,14 @@ public static class ZohoItemOperations
 
         var updatedResult = parsedDataCore
             .OnFailureCompensate(error => error.Contains("the id given seems to be invalid")
-                ? zohoItemBase.CreateCore()
+                ? zohoItemBase.CreateCore(duplicateDataApiName2Handle)
                 : parsedDataCore);
 
         return updatedResult;
     }
 
     static Result<IReadOnlyCollection<OriginalWithSameResult<ZohoItemBaseWithId<T>>>> UpdateManyCore<T>(this IReadOnlyCollection<ZohoItemBaseWithId<T>> zohoItemBase,
+        Maybe<string> duplicateDataApiName2Handle,
         Action<(string sourceModule, string altaId, Result<long> zohoId, OperationTypeNeededInZohoEnum operationTypeNeededInZohoEnum)> updateHandler) where T : ZohoItemBase
     {
         if (zohoItemBase.Any(z => z.ZohoId.HasNoValue)) throw new InvalidOperationException("Can't be updating zohoItemBase w/o zohoId specified");
@@ -64,7 +65,7 @@ public static class ZohoItemOperations
         var updatedResult = parsedWithInitial
                 .Select(parsedDataCore =>
                     parsedDataCore.Original.Create(parsedDataCore.Result.OnFailureCompensate(error => error.Contains("the id given seems to be invalid")
-                        ? parsedDataCore.Original.UpdateToCreate().CreateCore()
+                        ? parsedDataCore.Original.UpdateToCreate().CreateCore(duplicateDataApiName2Handle)
                         : parsedDataCore.Result)))
                 .AsReadOnlyList()
             ;
@@ -81,7 +82,7 @@ public static class ZohoItemOperations
     }
 
 
-    static Result<ZohoItemBaseWithId<T>> CreateCore<T>(this ZohoItemBaseWithId<T> zohoItemBase, CreateOperationType createOperationType = CreateOperationType.CreateAndUpdateExisting)
+    static Result<ZohoItemBaseWithId<T>> CreateCore<T>(this ZohoItemBaseWithId<T> zohoItemBase, Maybe<string> handleDuplicateDataApiName, CreateOperationType createOperationType = CreateOperationType.CreateAndUpdateExisting)
         where T : ZohoItemBase
     {
         if (zohoItemBase.ZohoId.HasValue) throw new InvalidOperationException("Can't be CREATING zohoItemBase with zohoId specified");
@@ -91,7 +92,7 @@ public static class ZohoItemOperations
                 parsedDataCore.IsSuccess
                     ? parsedDataCore
                     : parsedDataCore.IsFailure
-                        ? ZohoApiErrorParser.ParseZohoApiError(parsedDataCore.Error)
+                        ? ZohoApiErrorParser.ParseZohoApiError(parsedDataCore.Error, handleDuplicateDataApiName)
                             .Use(altaIdParser => altaIdParser is {IsSuccess : true}
                                 ? zohoItemBase.Item.ZohoModule.GetSingleRecord(altaIdParser.Value)
                                     .Use(existingRecord =>
@@ -122,6 +123,7 @@ public static class ZohoItemOperations
 
     static Result<IEnumerable<OriginalWithSameResult<ZohoItemBaseWithId<T>>>> CreateManyCore<T>(this IEnumerable<ZohoItemBaseWithId<T>> zohoItemBase,
         Action<(string sourceModule, string altaId, Result<long> zohoId, OperationTypeNeededInZohoEnum operationTypeNeededInZohoEnum)> updateHandler,
+        Maybe<string> handleDuplicateDataApiName,
         CreateOperationType createOperationType = CreateOperationType.CreateAndUpdateExisting)
         where T : ZohoItemBase
     {
@@ -153,15 +155,12 @@ public static class ZohoItemOperations
                 return value2Return;
             })
             .AsReadOnlyList();
-        // var parsedDataCores = ParseManyResults(zohoItemBaseWithIds, tuple => () => tuple.ro.CreateRecords(tuple.moduleName, tuple.bw, tuple.hm));
-
-        // if (parsedDataCores.IsFailure) return parsedDataCores.ConvertFailure<IEnumerable<OriginalWithSameResult<ZohoItemBaseWithId<T>>>>();
 
         var result = parsedDataCores.Select(parsedDataCore =>
             parsedDataCore.Result.IsSuccess
                 ? parsedDataCore
                 : parsedDataCore.Result.IsFailure
-                    ? ZohoApiErrorParser.ParseZohoApiError(parsedDataCore.Result.Error)
+                    ? ZohoApiErrorParser.ParseZohoApiError(parsedDataCore.Result.Error, handleDuplicateDataApiName)
                         .Use(altaIdParser =>
                         {
                             Log.Information("Parsed error and got result {Result}", altaIdParser);
@@ -208,14 +207,14 @@ public static class ZohoItemOperations
     }
 
 
-    public static Result<ZohoItemBaseWithId<T>> Save<T>(this ZohoItemBaseWithId<T> zohoItemBase, CreateOperationType createOperationType = CreateOperationType.CreateAndUpdateExisting)
+    public static Result<ZohoItemBaseWithId<T>> Save<T>(this ZohoItemBaseWithId<T> zohoItemBase,Maybe<string> duplicateDataApiName2Handle, CreateOperationType createOperationType = CreateOperationType.CreateAndUpdateExisting)
         where T : ZohoItemBase
     {
         var parsedData =
             zohoItemBase.OperationTypeNeededInZoho switch
             {
-                OperationTypeNeededInZohoEnum.Create => CreateCore(zohoItemBase, createOperationType),
-                OperationTypeNeededInZohoEnum.Update => UpdateCore(zohoItemBase),
+                OperationTypeNeededInZohoEnum.Create => CreateCore(zohoItemBase, duplicateDataApiName2Handle, createOperationType),
+                OperationTypeNeededInZohoEnum.Update => UpdateCore(zohoItemBase, duplicateDataApiName2Handle),
                 OperationTypeNeededInZohoEnum.IgnoreDueToError => Result.Failure<ZohoItemBaseWithId<T>>("IgnoredDueToError"),
                 OperationTypeNeededInZohoEnum.LeaveUnchanged => zohoItemBase
                     // .ZohoRecord
@@ -242,15 +241,16 @@ public static class ZohoItemOperations
 
 
     public static Result<IEnumerable<OriginalWithSameResult<ZohoItemBaseWithId<T>>>> SaveMany<T>(this IEnumerable<ZohoItemBaseWithId<T>> zohoItemBase,
+        Maybe<string> duplicateDataApiName2Handle,
         Action<(string sourceModule, string altaId, Result<long> zohoId, OperationTypeNeededInZohoEnum operationTypeNeededInZohoEnum)> updateHandler,
         CreateOperationType createOperationType = CreateOperationType.CreateAndUpdateExisting)
         where T : ZohoItemBase
     {
         var zohoItemBasesArol = zohoItemBase.AsReadOnlyList();
 
-        var created = CreateManyCore(zohoItemBasesArol.Where(z => z.OperationTypeNeededInZoho == OperationTypeNeededInZohoEnum.Create).AsReadOnlyList(), updateHandler, createOperationType);
+        var created = CreateManyCore(zohoItemBasesArol.Where(z => z.OperationTypeNeededInZoho == OperationTypeNeededInZohoEnum.Create).AsReadOnlyList(), updateHandler, duplicateDataApiName2Handle, createOperationType);
 
-        var updated = UpdateManyCore(zohoItemBasesArol.Where(z => z.OperationTypeNeededInZoho == OperationTypeNeededInZohoEnum.Update).AsReadOnlyList(), updateHandler);
+        var updated = UpdateManyCore(zohoItemBasesArol.Where(z => z.OperationTypeNeededInZoho == OperationTypeNeededInZohoEnum.Update).AsReadOnlyList(), duplicateDataApiName2Handle, updateHandler);
 
         if (zohoItemBasesArol.Any(z => z.OperationTypeNeededInZoho == OperationTypeNeededInZohoEnum.LeaveUnchanged && z.ZohoId.HasNoValue))
             throw new InvalidOperationException("Can't Leave unsaved record Unchanged");
@@ -405,7 +405,7 @@ public static class ZohoItemOperations
 
     static class ZohoApiErrorParser
     {
-        public static Result<long> ParseZohoApiError(string text)
+        public static Result<long> ParseZohoApiError(string text, Maybe<string> handleDuplicateDataApiName)
         {
             Log.Warning("Parsing error {Error}", text);
            
@@ -422,7 +422,10 @@ public static class ZohoItemOperations
 
             var first = couplesOfTwo.First();
             var second = couplesOfTwo.Skip(1).FirstOrDefault();
-            if (first.Value == "Alta_ID" && second?.Key == "id")
+
+            var allowedDuplicateApiNames = handleDuplicateDataApiName.ToEnumerable("Alta_ID").Where(d => d.HasValue).Select(s => s.Value);
+            
+            if (allowedDuplicateApiNames.Any(d => d == first.Value) && second?.Key == "id")
                 return long.TryParse(second.Value, out var parsedValue)
                     ? parsedValue
                     : Result.Failure<long>($"Couldn't convert [{second.Value}] to long");
