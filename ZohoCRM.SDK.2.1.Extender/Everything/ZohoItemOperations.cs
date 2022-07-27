@@ -559,7 +559,7 @@ public enum ZohoOperationType
     Get
 }
 
-public class ZohoOperationCounter
+public class ZohoOperationCounter : IDisposable
 {
     public ZohoOperationCounter(string moduleName, ZohoOperationType operationType)
     {
@@ -570,19 +570,22 @@ public class ZohoOperationCounter
     public string ModuleName { get; }
     public int Counter { get; private set; } = 0;
 
-    public void IncreaseCounter() => ++Counter;
+    public void IncreaseCounter()
+    {
+        ++Counter;
+        if (Counter % 100 == 0)
+            LogStatus("InProgress");
+    }
 
     public ZohoOperationType OperationType { get; }
+
+    void LogStatus(string prefix) => Log.Information(prefix + "ZohoOperationCounter: {ModuleName}, {OperationType}, {Count}", ModuleName, OperationType, Counter);
+
+    public void Dispose() => LogStatus("Done");
 }
 
-public class ZohoCounters
+public class ZohoCounters : IDisposable
 {
-    // public ZohoCounters()
-    // {
-    // }
-
-    public void AddCounter(ZohoOperationCounter zohoOperationCounter) => zohoOperationCounters.Add(zohoOperationCounter);
-
     static readonly object Locker = new();
 
     public void IncreaseCountForModule(string moduleName, ZohoOperationType zohoOperationType)
@@ -595,5 +598,13 @@ public class ZohoCounters
     }
 
     readonly List<ZohoOperationCounter> zohoOperationCounters = new();
-    public IEnumerable<ZohoOperationCounter> ZohoOperationCounters => zohoOperationCounters;
+
+    public IEnumerable<ZohoOperationCounter> ZohoOperationCounters
+        => zohoOperationCounters.Use(z =>
+        {
+            lock (Locker)
+                return z.AsReadOnlyList();
+        });
+
+    public void Dispose() => zohoOperationCounters.ForEach(zo => zo.Dispose());
 }
