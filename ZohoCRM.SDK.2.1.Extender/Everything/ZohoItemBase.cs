@@ -49,10 +49,10 @@ public class ZohoItemBaseWithId<T> where T : ZohoItemBase
                 // ReSharper disable once ParameterOnlyUsedForPreconditionCheck.Local
                 .UseThenReturnSelf(hasNoValue =>
                 {
-                    if (hasNoValue && Item.OperationTypeNeededInZoho != OperationTypeNeededInZohoEnum.Create)
+                    if (hasNoValue && Item.OperationTypeNeededInZoho.Use(ot => ot is not OperationTypeNeededInZohoEnum.Create && ot is not OperationTypeNeededInZohoEnum.IgnoreDueToError))
                         throw new InvalidOperationException("You must specify OperationTypeNeededInZohoEnum.Create for when ZohoId is missing");
                 })
-                ? OperationTypeNeededInZohoEnum.Create
+                ? Item.OperationTypeNeededInZoho // OperationTypeNeededInZohoEnum.Create
                 : Item.OperationTypeNeededInZoho == OperationTypeNeededInZohoEnum.Create // ZohoItemBase doesn't YET know that the record has already been updated
                     ? OperationTypeNeededInZohoEnum.Update
                     : Item.OperationTypeNeededInZoho;
