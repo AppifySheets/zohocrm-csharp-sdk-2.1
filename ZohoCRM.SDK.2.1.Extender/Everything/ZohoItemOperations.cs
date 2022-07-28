@@ -60,14 +60,15 @@ public static class ZohoItemOperations
         if (parsedDataCores.IsFailure) return parsedDataCores.ConvertFailure<IReadOnlyCollection<OriginalWithSameResult<ZohoItemBaseWithId<T>>>>();
 
         parsedDataCores.Value.Where(v => v.IsFailure)
-            .ForEach(c => { Log.Error("Error updating record with {Error}", c.Error); });
+            .ForEach(c => Log.Error("Error updating record with {Error}", c.Error));
 
         OriginalWithSameResult<ZohoItemBaseWithId<T>> Get(ZohoItemBaseWithId<T> original, Record? maybeResult)
             => maybeResult != null
                 ? original.Create(original.SetZohoId(maybeResult.Id!.Value))
                 : original.CreateFailure($"Update failed for {original.ZohoId} - the id given seems to be invalid");
 
-        var parsedWithInitial = zohoItemBase.Select(i => Get(i, parsedDataCores.Value.SingleOrDefault(pdc => pdc.IsSuccess && pdc.Value.Id == i.ZohoId).Value))
+        var parsedWithInitial = zohoItemBase
+            .Select(i => Get(i, parsedDataCores.Value.SingleOrDefault(pdc => pdc.IsSuccess && pdc.Value.Id == i.ZohoId).Value))
             .AsReadOnlyList();
 
         var updatedResult = parsedWithInitial
@@ -295,7 +296,7 @@ public static class ZohoItemOperations
                 .Select(v => v.CreateSuccess())
             )
             .Union(zohoItemBasesArol.Where(z => z.OperationTypeNeededInZoho == OperationTypeNeededInZohoEnum.IgnoreDueToError)
-                .Select(v => v.Create(Result.Failure<ZohoItemBaseWithId<T>>("IgnoredDueToError")))
+                .Select(v => v.Create(Result.Failure<ZohoItemBaseWithId<T>>($"{v.Item.SourceRecordIdentifier} - IgnoredDueToError")))
             );
 
         return Result.Success(final);
@@ -524,13 +525,6 @@ public static class OriginalWithResultExtensions
     public static OriginalWithSameResult<TOriginal> Create<TOriginal>(this TOriginal original, Result<TOriginal> result) => new(original, result);
     public static OriginalWithSameResult<TOriginal> CreateSuccess<TOriginal>(this TOriginal original) => new(original, Result.Success(original));
     public static OriginalWithSameResult<TOriginal> CreateFailure<TOriginal>(this TOriginal original, string error) => new(original, Result.Failure<TOriginal>(error));
-
-    // public static OriginalWithSameResult<TOriginal> CreateFromSuccess<TOriginal>(this Result<TOriginal> result)
-    // {
-    //     if (result.IsFailure) throw new InvalidOperationException(result.Error);
-    //
-    //     return new OriginalWithSameResult<TOriginal>(result.Value, result);
-    // }
 }
 
 public class OriginalWithSameResult<TOriginal> : OriginalWithResult<TOriginal, TOriginal>

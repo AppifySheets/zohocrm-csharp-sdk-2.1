@@ -6,9 +6,7 @@ namespace ZohoCRM.SDK_2_1.Extender.BaseTypes.Everything;
 
 public static class ZohoItemBaseWithId
 {
-    // public static ZohoItemBaseWithId<T> ForCreating<T>(this T item) where T : ZohoItemBase => new(Maybe<long>.None, item);
     public static ZohoItemBaseWithId<T> ForTransferring<T>(this T item) where T : ZohoItemBase => new(item.ZohoId, item);
-    // public static ZohoItemBaseWithId<T> ForUpdating<T>(this T item, long zohoId) where T : ZohoItemBase => new(zohoId, item);
 }
 
 public class ZohoItemBaseWithId<T> where T : ZohoItemBase
@@ -22,37 +20,23 @@ public class ZohoItemBaseWithId<T> where T : ZohoItemBase
             throw new InvalidOperationException($"Existing and New ZohoId's can't be different: Existing [{item.ZohoId}], New [{zohoId.Value}]");
     }
 
-    // public ZohoItemBaseWithId(long zohoId, T item)
-    // {
-    //     this.zohoId = zohoId;
-    //     Item = item;
-    //
-    //     if (this.zohoId.HasValue && item.ZohoId.HasValue && this.zohoId.Value != item.ZohoId.Value)
-    //         throw new InvalidOperationException($"Existing and New ZohoId's can't be different: Existing [{item.ZohoId}], New [{zohoId}]");
-    // }
-
     ZohoItemBaseWithId(T item, bool forceCreate)
     {
         Item = item;
         ForceCreate = forceCreate;
     }
 
-    // public ZohoItemBaseWithId(T item) : this(Maybe.None, item)
-    // {
-    // }
-
     public OperationTypeNeededInZohoEnum OperationTypeNeededInZoho =>
         ForceCreate
             ? OperationTypeNeededInZohoEnum.Create
             : ZohoId
                 .HasNoValue
-                // ReSharper disable once ParameterOnlyUsedForPreconditionCheck.Local
                 .UseThenReturnSelf(hasNoValue =>
                 {
                     if (hasNoValue && Item.OperationTypeNeededInZoho.Use(ot => ot is not OperationTypeNeededInZohoEnum.Create && ot is not OperationTypeNeededInZohoEnum.IgnoreDueToError))
                         throw new InvalidOperationException("You must specify OperationTypeNeededInZohoEnum.Create for when ZohoId is missing");
                 })
-                ? Item.OperationTypeNeededInZoho // OperationTypeNeededInZohoEnum.Create
+                ? Item.OperationTypeNeededInZoho // Used to be OperationTypeNeededInZohoEnum.Create, needs attention!
                 : Item.OperationTypeNeededInZoho == OperationTypeNeededInZohoEnum.Create // ZohoItemBase doesn't YET know that the record has already been updated
                     ? OperationTypeNeededInZohoEnum.Update
                     : Item.OperationTypeNeededInZoho;
@@ -70,8 +54,6 @@ public class ZohoItemBaseWithId<T> where T : ZohoItemBase
 
     public ZohoItemBaseWithId<T> SetZohoId(long zohoIdParam) => new(zohoIdParam, Item, true);
     public ZohoItemBaseWithId<T> UpdateToCreate() => new(Item, true);
-    public ZohoItemBaseWithId<T> UpdateItem(T item) => new(zohoId, item);
-    public ZohoItemBaseWithId<T> UpdateItem(Func<T, T> itemFunc) => new(zohoId, itemFunc(Item));
 
     Record ZohoRecordInternal()
     {
