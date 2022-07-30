@@ -400,40 +400,16 @@ public static class ZohoItemOperations
                 var parsedResult = apiResponseHandler((zohoModule.Single().ToString(), bodyWrapper, headerInstance2, recordOperations));
                 var parseFuncResult = Result.Try(parsedResult, e => e.ToString());
 
-                if (parseFuncResult.IsFailure) parseFuncResult.ConvertFailure<IEnumerable<Result<Record>>>();
-
-                var parsedData = RecordsParser.ParseData(parseFuncResult.Value);
-                if (parseFuncResult.IsFailure) parseFuncResult.ConvertFailure<IEnumerable<Result<Record>>>();
-
-                return parsedData.Value;
+                var result = parseFuncResult.Bind(r => RecordsParser.ParseData(parseFuncResult.Value));
+                return result;
             }).AsReadOnlyList();
-        // .Use(r => r.IsFailure
-        //     ? r.ConvertFailure<Result<Record>>()
-        //     : r.Value.Select(ri => ri) )
-
-        // if (parsedDataResult.IsFailure) return parsedDataResult.ConvertFailure<IEnumerable<Result<Record>>>();
-
-        var finalResult = parsedDataResult.SelectMany(i => i.Select(ii => ii));
+        
+        var combinedResult = parsedDataResult.Combine();
+        if (combinedResult.IsFailure) return combinedResult.ConvertFailure<IEnumerable<Result<Record>>>();
+        
+        var finalResult = parsedDataResult.SelectMany(i => i.Value.Select(ii => ii));
 
         return Result.Success(finalResult);
-
-        // if (parseFuncResult.IsSuccess)
-        //     return
-        //
-        // if (parseFuncResult.IsFailure)
-        // {
-        // }
-        //
-        //
-        // var parsedDataResultIndexed = parsedDataResult.Value.Select((data, index) => new {data, index}).AsReadOnlyList();
-        //
-        // var zohoItemBasesWithParsedData = zohoItemBasesOrderedArol.Select(z => new {z.zohoItemBase, Data = parsedDataResultIndexed.Single(pd => pd.index == z.index).data}).AsReadOnlyList();
-        //
-        // var withBind = zohoItemBasesWithParsedData
-        //     .Select(r => new {r.zohoItemBase, mapped = r.Data.Map(ri => r.zohoItemBase.SetZohoId(ri.Id!.Value))}).AsReadOnlyList();
-        //
-        //
-        // return Result.Success(withBind.Select(b => b.zohoItemBase.Create(b.mapped)));
     }
 
     static class ZohoApiErrorParser
