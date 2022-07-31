@@ -159,7 +159,7 @@ public static class ZohoItemOperations
         var counter = zohoItemBaseWithIds.Count;
 
         zohoItemBaseWithIds.Select(z => z.Item.ZohoModule.ToString()).GroupBy(zm => zm)
-            .ForEach(zm => Log.Information("Processing {Module} - {ItemsCount}", zm.Key, zm.Count()));
+            .ForEach(zm => Log.Information("Creating {Module} - {ItemsCount}", zm.Key, zm.Count()));
 
         var parsedDataCores = zohoItemBaseWithIds
             .AsParallel()
@@ -300,34 +300,6 @@ public static class ZohoItemOperations
             );
 
         return Result.Success(final);
-        //
-        // var parsedData =
-        //     zohoItemBase.OperationTypeNeededInZoho switch
-        //     {
-        //         OperationTypeNeededInZohoEnum.Create => CreateManyCore(zohoItemBasesArol, createOperationType),
-        //         OperationTypeNeededInZohoEnum.Update => UpdateCore(zohoItemBasesArol),
-        //         OperationTypeNeededInZohoEnum.IgnoreDueToError => Result.Failure<ZohoItemBaseWithId<T>>("IgnoredDueToError"),
-        //         OperationTypeNeededInZohoEnum.LeaveUnchanged => zohoItemBase
-        //             // .ZohoRecord
-        //             .UseThenReturnSelf(zr =>
-        //             {
-        //                 if (zr.ZohoId.HasNoValue)
-        //     
-        //             }),
-        //         _ => throw new ArgumentOutOfRangeException()
-        //     };
-        //
-        // return parsedData.Map(pd =>
-        // {
-        //     if (pd.ZohoId.HasNoValue)
-        //     {
-        //         Debugger.Break();
-        //     }
-        //
-        //     // Debug.Assert(pd.ZohoId.HasValue, "pd.Id != null");
-        //
-        //     return zohoItemBase.SetZohoId(pd.ZohoId.Value);
-        // });
     }
 
     static Result<ZohoItemBaseWithId<T>> ParseResult<T>(ZohoItemBaseWithId<T> zohoItemBase,
