@@ -271,7 +271,7 @@ public static class ZohoItemOperations
     // }
 
 
-    public static Result<IEnumerable<OriginalWithSameResult<ZohoItemBaseWithId<T>>>> SaveMany<T>(this IEnumerable<ZohoItemBaseWithId<T>> zohoItemBase,
+    public static IEnumerable<OriginalWithSameResult<ZohoItemBaseWithId<T>>> SaveMany<T>(this IEnumerable<ZohoItemBaseWithId<T>> zohoItemBase,
         Maybe<string> duplicateDataApiName2Handle, ZohoCounters zohoCounters,
         Action<(string sourceModule, string altaId, Result<long> zohoId, OperationTypeNeededInZohoEnum operationTypeNeededInZohoEnum)> updateHandler,
         CreateOperationType createOperationType = CreateOperationType.CreateAndUpdateExisting)
@@ -288,8 +288,8 @@ public static class ZohoItemOperations
         if (zohoItemBasesArol.Any(z => z.OperationTypeNeededInZoho == OperationTypeNeededInZohoEnum.LeaveUnchanged && z.ZohoId.HasNoValue))
             throw new InvalidOperationException("Can't Leave unsaved record Unchanged");
 
-        var createdUpdated = Result.Combine(created, updated);
-        if (createdUpdated.IsFailure) return createdUpdated.ConvertFailure<IEnumerable<OriginalWithSameResult<ZohoItemBaseWithId<T>>>>();
+        // var createdUpdated = Result.Combine(created, updated);
+        // if (createdUpdated.IsFailure) return createdUpdated.ConvertFailure<IEnumerable<OriginalWithSameResult<ZohoItemBaseWithId<T>>>>();
 
         var final = created.Value.Union(updated.Value)
             .Union(zohoItemBasesArol.Where(z => z.OperationTypeNeededInZoho == OperationTypeNeededInZohoEnum.LeaveUnchanged)
@@ -299,7 +299,7 @@ public static class ZohoItemOperations
                 .Select(v => v.Create(Result.Failure<ZohoItemBaseWithId<T>>($"{v.Item.SourceRecordIdentifier} - IgnoredDueToError")))
             );
 
-        return Result.Success(final);
+        return final;
     }
 
     static Result<ZohoItemBaseWithId<T>> ParseResult<T>(ZohoItemBaseWithId<T> zohoItemBase,
