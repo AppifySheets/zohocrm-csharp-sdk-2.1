@@ -23,26 +23,26 @@ public static class ResultExtensions
 
 public static class ZohoItemOperations
 {
-    static Result<ZohoItemBaseWithId<T>> UpdateCore<T>(this ZohoItemBaseWithId<T> zohoItemBase, Maybe<string> duplicateDataApiName2Handle, ZohoCounters zohoCounters) where T : ZohoItemBase
-    {
-        if (!zohoItemBase.ZohoId.HasValue) throw new InvalidOperationException("Can't be updating zohoItemBase w/o zohoId specified");
-
-        var parsedDataCore = ParseResult(zohoItemBase,
-            tuple => () =>
-            {
-                var zohoModuleName = zohoItemBase.Item.ZohoModule.ToString();
-                zohoCounters.IncreaseCountForModule(zohoModuleName, ZohoOperationType.Update);
-
-                return tuple.ro.UpdateRecord(zohoItemBase.ZohoId.Value, zohoModuleName, tuple.bw, tuple.hm);
-            });
-
-        var updatedResult = parsedDataCore
-            .OnFailureCompensate(error => error.Contains("the id given seems to be invalid")
-                ? zohoItemBase.CreateCore(duplicateDataApiName2Handle, zohoCounters)
-                : parsedDataCore);
-
-        return updatedResult;
-    }
+    // static Result<ZohoItemBaseWithId<T>> UpdateCore<T>(this ZohoItemBaseWithId<T> zohoItemBase, Maybe<string> duplicateDataApiName2Handle, ZohoCounters zohoCounters) where T : ZohoItemBase
+    // {
+    //     if (!zohoItemBase.ZohoId.HasValue) throw new InvalidOperationException("Can't be updating zohoItemBase w/o zohoId specified");
+    //
+    //     var parsedDataCore = ParseResult(zohoItemBase,
+    //         tuple => () =>
+    //         {
+    //             var zohoModuleName = zohoItemBase.Item.ZohoModule.ToString();
+    //             zohoCounters.IncreaseCountForModule(zohoModuleName, ZohoOperationType.Update, 1);
+    //
+    //             return tuple.ro.UpdateRecord(zohoItemBase.ZohoId.Value, zohoModuleName, tuple.bw, tuple.hm);
+    //         });
+    //
+    //     var updatedResult = parsedDataCore
+    //         .OnFailureCompensate(error => error.Contains("the id given seems to be invalid")
+    //             ? zohoItemBase.CreateCore(duplicateDataApiName2Handle, zohoCounters)
+    //             : parsedDataCore);
+    //
+    //     return updatedResult;
+    // }
 
     static IReadOnlyCollection<OriginalWithSameResult<ZohoItemBaseWithId<T>>> UpdateManyCore<T>(this IReadOnlyCollection<ZohoItemBaseWithId<T>> zohoItemBase,
         Maybe<string> duplicateDataApiName2Handle,
@@ -53,10 +53,10 @@ public static class ZohoItemOperations
 
         var parsedDataCores = ParseManyResults(zohoItemBase, tuple => () =>
         {
-            zohoCounters.IncreaseCountForModule(tuple.moduleName, ZohoOperationType.Update);
+            // zohoCounters.IncreaseCountForModule(tuple.moduleName, ZohoOperationType.Update);
 
             return tuple.ro.UpdateRecords(tuple.moduleName, tuple.bw, tuple.hm);
-        });
+        }, zohoCounters);
         // if (parsedDataCores.IsFailure) return parsedDataCores.ConvertFailure<IReadOnlyCollection<OriginalWithSameResult<ZohoItemBaseWithId<T>>>>();
 
         parsedDataCores.Where(v => v.IsFailure)
@@ -100,7 +100,7 @@ public static class ZohoItemOperations
         var parsedDataCore = ParseResult(zohoItemBase, tuple => () =>
             {
                 var zohoModuleName = zohoItemBase.Item.ZohoModule.ToString();
-                zohoCounters.IncreaseCountForModule(zohoModuleName, ZohoOperationType.Insert);
+                zohoCounters.IncreaseCountForModule(zohoModuleName, ZohoOperationType.Insert, 1);
                 return tuple.ro.CreateRecords(zohoModuleName, tuple.bw, tuple.hm);
             })
             .Use(parsedDataCore =>
@@ -120,7 +120,7 @@ public static class ZohoItemOperations
                                                     () =>
                                                     {
                                                         var zohoModuleName = zohoItemBase.Item.ZohoModule.ToString();
-                                                        zohoCounters.IncreaseCountForModule(zohoModuleName, ZohoOperationType.Update);
+                                                        zohoCounters.IncreaseCountForModule(zohoModuleName, ZohoOperationType.Update, 1);
                                                         return tuple.ro.UpdateRecord(existingRecord.Value.Record.Id, zohoModuleName, tuple.bw, tuple.hm);
                                                     }),
                                                 _ => throw new ArgumentOutOfRangeException(nameof(createOperationType), createOperationType, null)
@@ -169,7 +169,7 @@ public static class ZohoItemOperations
                 var value2Return = z.Create(ParseResult(z, tuple =>
                 {
                     Log.Debug("Creating {Module} - {Record} ({RemainingCount}/{TotalCount})", tuple.moduleName, z.Item.SourceRecordIdentifier, counter--, zohoItemBaseWithIds.Count);
-                    zohoCounters.IncreaseCountForModule(tuple.moduleName, ZohoOperationType.Insert);
+                    zohoCounters.IncreaseCountForModule(tuple.moduleName, ZohoOperationType.Insert, zohoItemBaseWithIds.Count);
                     return () => tuple.ro.CreateRecords(tuple.moduleName, tuple.bw, tuple.hm);
                 }));
 
@@ -206,7 +206,7 @@ public static class ZohoItemOperations
                                                             parsedDataCore.Original.Item.ZohoModule);
 
                                                         var zohoModuleName = parsedDataCore.Original.Item.ZohoModule.ToString();
-                                                        zohoCounters.IncreaseCountForModule(zohoModuleName, ZohoOperationType.Update);
+                                                        zohoCounters.IncreaseCountForModule(zohoModuleName, ZohoOperationType.Update, parsedDataCores.Count);
 
                                                         return tuple.ro.UpdateRecord(existingRecord.Value.Record.Id, zohoModuleName, tuple.bw, tuple.hm);
                                                     })),
@@ -341,7 +341,7 @@ public static class ZohoItemOperations
     }
 
     static IReadOnlyCollection<Result<Record>> ParseManyResults<T>(IEnumerable<ZohoItemBaseWithId<T>> zohoItemBases,
-        Func<(string moduleName, BodyWrapper bw, HeaderMap hm, RecordOperations ro), Func<APIResponse<ActionHandler>>> apiResponseHandler) where T : ZohoItemBase
+        Func<(string moduleName, BodyWrapper bw, HeaderMap hm, RecordOperations ro), Func<APIResponse<ActionHandler>>> apiResponseHandler, ZohoCounters zohoCounters) where T : ZohoItemBase
     {
         var zohoItemBasesOrderedAllArol = zohoItemBases.Select((zohoItemBase, index) => new {zohoItemBase, index}).OrderBy(z => z.zohoItemBase.Item.RecordIdentifierExtended).AsReadOnlyList();
 
@@ -355,7 +355,7 @@ public static class ZohoItemOperations
         if (operationType.Count != 1) throw new InvalidOperationException("No no");
         if (zohoModule.Count != 1) throw new InvalidOperationException("No no");
 
-        var counter = zohoItemBasesOrderedAllArol.Count;
+        // var counter = zohoItemBasesOrderedAllArol.Count;
         var parsedDataResult = zohoItemBasesOrderedAllArol
             .ChunkLocal(100)
             .Select(zohoItemBasesOrdered =>
@@ -369,7 +369,10 @@ public static class ZohoItemOperations
                 var headerInstance2 = new HeaderMap();
                 bodyWrapper.Data = itemBasesOrdered.Select(z => z.zohoItemBase.ZohoRecord).ToList();
 
-                Log.Information("Updating {Module} - {RecordCount} - {Remaining}/{Total}", zohoModule.Single(), itemBasesOrdered.Count, counter-=itemBasesOrdered.Count, zohoItemBasesOrderedAllArol.Count);
+                zohoCounters.IncreaseCountForModuleBy(zohoModule.Single().ToString(), ZohoOperationType.Update, zohoItemBasesOrderedAllArol.Count, itemBasesOrdered.Count);
+
+                // Log.Information("Updating {Module} - {RecordCount} - {Remaining}/{Total}", zohoModule.Single(), itemBasesOrdered.Count, counter -= itemBasesOrdered.Count,
+                //     zohoItemBasesOrderedAllArol.Count);
 
                 var parsedResult = apiResponseHandler((zohoModule.Single().ToString(), bodyWrapper, headerInstance2, recordOperations));
                 var parseFuncResult = Result.Try(parsedResult, e => e.ToString());
@@ -506,10 +509,11 @@ public enum ZohoOperationType
 
 public class ZohoOperationCounter : IDisposable
 {
-    public ZohoOperationCounter(string moduleName, ZohoOperationType operationType)
+    public ZohoOperationCounter(string moduleName, ZohoOperationType operationType, int totalRecordsCount)
     {
         ModuleName = moduleName;
         OperationType = operationType;
+        TotalRecordsCount = totalRecordsCount;
     }
 
     public string ModuleName { get; }
@@ -522,9 +526,18 @@ public class ZohoOperationCounter : IDisposable
             LogStatus("InProgress");
     }
 
-    public ZohoOperationType OperationType { get; }
+    public void IncreaseCounterBy(int count)
+    {
+        Counter += count;
 
-    void LogStatus(string prefix) => Log.Information(prefix + "ZohoOperationCounter: {ModuleName}, {OperationType}, {Count}", ModuleName, OperationType, Counter);
+        LogStatus("InProgress (Bulk) ");
+    }
+
+    public ZohoOperationType OperationType { get; }
+    public int TotalRecordsCount { get; }
+
+    void LogStatus(string prefix) => Log.Information(prefix + "ZohoOperationCounter: {ModuleName}, {OperationType}, {Count}/{TotalRecordsCount}", ModuleName,
+        OperationType, Counter, TotalRecordsCount);
 
     public void Dispose() => LogStatus("Done");
 }
@@ -533,13 +546,22 @@ public class ZohoCounters : IDisposable
 {
     static readonly object Locker = new();
 
-    public void IncreaseCountForModule(string moduleName, ZohoOperationType zohoOperationType)
+    public void IncreaseCountForModule(string moduleName, ZohoOperationType zohoOperationType, int totalRecordsCount)
     {
         lock (Locker)
             (zohoOperationCounters.SingleOrDefault(zc => zc.ModuleName == moduleName && zc.OperationType == zohoOperationType)
-             ?? new ZohoOperationCounter(moduleName, zohoOperationType)
+             ?? new ZohoOperationCounter(moduleName, zohoOperationType, totalRecordsCount)
                  .UseThenReturnSelf(zc => zohoOperationCounters.Add(zc)))
                 .IncreaseCounter();
+    }
+
+    public void IncreaseCountForModuleBy(string moduleName, ZohoOperationType zohoOperationType, int totalRecordsCount, int increaseBy)
+    {
+        lock (Locker)
+            (zohoOperationCounters.SingleOrDefault(zc => zc.ModuleName == moduleName && zc.OperationType == zohoOperationType)
+             ?? new ZohoOperationCounter(moduleName, zohoOperationType, totalRecordsCount)
+                 .UseThenReturnSelf(zc => zohoOperationCounters.Add(zc)))
+                .IncreaseCounterBy(increaseBy);
     }
 
     readonly List<ZohoOperationCounter> zohoOperationCounters = new();
@@ -551,5 +573,9 @@ public class ZohoCounters : IDisposable
                 return z.AsReadOnlyList();
         });
 
-    public void Dispose() => zohoOperationCounters.ForEach(zo => zo.Dispose());
+    public void Dispose()
+    {
+        zohoOperationCounters.ForEach(zo => zo.Dispose());
+        zohoOperationCounters.Clear();
+    }
 }
