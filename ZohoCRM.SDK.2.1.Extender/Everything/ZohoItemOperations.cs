@@ -355,6 +355,7 @@ public static class ZohoItemOperations
         if (operationType.Count != 1) throw new InvalidOperationException("No no");
         if (zohoModule.Count != 1) throw new InvalidOperationException("No no");
 
+        var counter = zohoItemBasesOrderedAllArol.Count;
         var parsedDataResult = zohoItemBasesOrderedAllArol
             .ChunkLocal(100)
             .Select(zohoItemBasesOrdered =>
@@ -368,7 +369,7 @@ public static class ZohoItemOperations
                 var headerInstance2 = new HeaderMap();
                 bodyWrapper.Data = itemBasesOrdered.Select(z => z.zohoItemBase.ZohoRecord).ToList();
 
-                Log.Information("Updating {Module} - {RecordCount} items", zohoModule.Single(), itemBasesOrdered.Count);
+                Log.Information("Updating {Module} - {RecordCount} - {Remaining}/{Total}", zohoModule.Single(), itemBasesOrdered.Count, counter-=itemBasesOrdered.Count, zohoItemBasesOrderedAllArol.Count);
 
                 var parsedResult = apiResponseHandler((zohoModule.Single().ToString(), bodyWrapper, headerInstance2, recordOperations));
                 var parseFuncResult = Result.Try(parsedResult, e => e.ToString());
