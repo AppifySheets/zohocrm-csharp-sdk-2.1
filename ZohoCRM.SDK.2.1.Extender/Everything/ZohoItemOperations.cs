@@ -539,7 +539,7 @@ public class ZohoOperationCounter : IDisposable
     void LogStatus(string prefix) => Log.Information(prefix + "ZohoOperationCounter: {ModuleName}, {OperationType}, {Count}/{TotalRecordsCount}", ModuleName,
         OperationType, Counter, TotalRecordsCount);
 
-    public void Dispose() => LogStatus("Done");
+    public void Dispose() => LogStatus("- - - Done - - - ");
 }
 
 public class ZohoCounters : IDisposable
