@@ -51,12 +51,7 @@ public static class ZohoItemOperations
         if (zohoItemBase.Any(z => z.ZohoId.HasNoValue)) throw new InvalidOperationException("Can't be updating zohoItemBase w/o zohoId specified");
         if (!zohoItemBase.Any()) return Enumerable.Empty<OriginalWithSameResult<ZohoItemBaseWithId<T>>>().AsReadOnlyList();
 
-        var parsedDataCores = ParseManyResults(zohoItemBase, tuple => () =>
-        {
-            // zohoCounters.IncreaseCountForModule(tuple.moduleName, ZohoOperationType.Update);
-
-            return tuple.ro.UpdateRecords(tuple.moduleName, tuple.bw, tuple.hm);
-        }, zohoCounters);
+        var parsedDataCores = ParseManyResults(zohoItemBase, tuple => () => tuple.ro.UpdateRecords(tuple.moduleName, tuple.bw, tuple.hm), zohoCounters);
         // if (parsedDataCores.IsFailure) return parsedDataCores.ConvertFailure<IReadOnlyCollection<OriginalWithSameResult<ZohoItemBaseWithId<T>>>>();
 
         parsedDataCores.Where(v => v.IsFailure)
@@ -65,7 +60,7 @@ public static class ZohoItemOperations
         OriginalWithSameResult<ZohoItemBaseWithId<T>> Get(ZohoItemBaseWithId<T> original, Record? maybeResult)
             => maybeResult != null
                 ? original.Create(original.SetZohoId(maybeResult.Id!.Value))
-                : original.CreateFailure($"Update failed for {original.ZohoId} - the id given seems to be invalid");
+                : original.CreateFailure($"Update failed for {original.ZohoId}");
 
         var parsedWithInitial = zohoItemBase
             .Select(i => Get(i, parsedDataCores.SingleOrDefault(pdc => pdc.IsSuccess && pdc.Value.Id == i.ZohoId).Value))
@@ -163,7 +158,7 @@ public static class ZohoItemOperations
 
         var parsedDataCores = zohoItemBaseWithIds
             .AsParallel()
-            .WithDegreeOfParallelism(10)
+            .WithDegreeOfParallelism(5)
             .Select(z =>
             {
                 var value2Return = z.Create(ParseResult(z, tuple =>
@@ -358,6 +353,8 @@ public static class ZohoItemOperations
         // var counter = zohoItemBasesOrderedAllArol.Count;
         var parsedDataResult = zohoItemBasesOrderedAllArol
             .ChunkLocal(100)
+            // .AsParallel()
+            // .WithDegreeOfParallelism(10)
             .Select(zohoItemBasesOrdered =>
             {
                 var itemBasesOrdered = zohoItemBasesOrdered.AsReadOnlyList();
