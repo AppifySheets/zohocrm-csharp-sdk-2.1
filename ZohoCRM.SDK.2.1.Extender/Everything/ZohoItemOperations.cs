@@ -85,6 +85,47 @@ public static class ZohoItemOperations
         return updatedResult;
     }
 
+    public static IReadOnlyCollection<OriginalWithSameResult<ZohoItemBaseWithId<T>>> DeleteManyCore<T>(this IReadOnlyCollection<ZohoItemBaseWithId<T>> zohoItemBase,
+        Maybe<string> duplicateDataApiName2Handle,
+        Action<(string sourceModule, string altaId, Result<long> zohoId, OperationTypeNeededInZohoEnum operationTypeNeededInZohoEnum)> updateHandler, ZohoCounters zohoCounters) where T : ZohoItemBase
+    {
+        if (zohoItemBase.Any(z => z.ZohoId.HasNoValue)) throw new InvalidOperationException("Can't be updating zohoItemBase w/o zohoId specified");
+        if (!zohoItemBase.Any()) return Enumerable.Empty<OriginalWithSameResult<ZohoItemBaseWithId<T>>>().AsReadOnlyList();
+
+        var parsedDataCores = ParseManyResults(zohoItemBase, tuple => () => tuple.ro.UpdateRecords(tuple.moduleName, tuple.bw, tuple.hm), zohoCounters);
+        // if (parsedDataCores.IsFailure) return parsedDataCores.ConvertFailure<IReadOnlyCollection<OriginalWithSameResult<ZohoItemBaseWithId<T>>>>();
+
+        parsedDataCores.Where(v => v.IsFailure)
+            .ForEach(c => Log.Error("Error updating record with {Error}", c.Error));
+
+        OriginalWithSameResult<ZohoItemBaseWithId<T>> Get(ZohoItemBaseWithId<T> original, Record? maybeResult)
+            => maybeResult != null
+                ? original.Create(original.SetZohoId(maybeResult.Id!.Value))
+                : original.CreateFailure($"Update failed for {original.ZohoId}");
+
+        var parsedWithInitial = zohoItemBase
+            .Select(i => Get(i, parsedDataCores.SingleOrDefault(pdc => pdc.IsSuccess && pdc.Value.Id == i.ZohoId).Value))
+            .AsReadOnlyList();
+
+        var updatedResult = parsedWithInitial
+                .Select(parsedDataCore =>
+                    parsedDataCore.Original.Create(parsedDataCore.Result.OnFailureCompensate(error => error.Contains("the id given seems to be invalid")
+                        ? parsedDataCore.Original.UpdateToCreate().CreateCore(duplicateDataApiName2Handle, zohoCounters)
+                        : parsedDataCore.Result)))
+                .AsReadOnlyList()
+            ;
+
+        // var sourceModuleName = zohoItemBase.Select(z => z.Item.SourceRecordTypeName).Distinct().Single().ToString();
+
+        updatedResult.ForEach(ur =>
+        {
+            updateHandler((ur.Original.Item.SourceRecordTypeName, ur.Original.Item.SourceRecordIdentifier, ur.Result.Use(r => r.IsSuccess ? r.Value.ZohoId.Value : r.ConvertFailure<long>()),
+                OperationTypeNeededInZohoEnum.Update));
+        });
+
+        return updatedResult;
+    }
+
 
     static Result<ZohoItemBaseWithId<T>> CreateCore<T>(this ZohoItemBaseWithId<T> zohoItemBase, Maybe<string> handleDuplicateDataApiName, ZohoCounters zohoCounters,
         CreateOperationType createOperationType = CreateOperationType.CreateAndUpdateExisting)
@@ -451,6 +492,33 @@ public static class ZohoItemOperations
         } while (records.IsSuccess && records.Value.Any());
 
 
+        return Result.Success();
+    }
+
+    public static Result DeleteRecords(this ZohoModules module, IEnumerable<string> recordIds2Delete)
+    {
+        var recordOperations = new RecordOperations();
+
+        var recordIds2DeleteArol = recordIds2Delete.AsReadOnlyList();
+        
+        $"Deleting {recordIds2DeleteArol.Count} {module} items".Dump();
+
+        var headerInstance = new HeaderMap();
+
+        var result = recordIds2DeleteArol
+            .ChunkLocal(90)
+            .Select(recordTs =>
+            {
+                var paramInstance = new ParameterMap();
+
+                recordTs.ForEach(id => paramInstance.Add(RecordOperations.DeleteRecordsParam.IDS, id.ToString()));
+                paramInstance.Add(RecordOperations.DeleteRecordsParam.WF_TRIGGER, false);
+
+                return recordOperations.DeleteRecords(module.ToString(), paramInstance, headerInstance);
+            }).ToList();
+
+        var parsed = result.Select(RecordsParser.ParseData).Combine();
+        
         return Result.Success();
     }
 

@@ -85,7 +85,7 @@ public static class RecordsWorker
         return companyRecordsMany.Map(c => c.Single());
     }
 
-    public static Result CreateRecord(this ZohoModules moduleName, Record record)
+    public static Result<Record> CreateRecord(this ZohoModules moduleName, Record record)
     {
         var bodyWrapper = new BodyWrapper();
 
@@ -95,7 +95,9 @@ public static class RecordsWorker
         bodyWrapper.Data = new[] { record }.ToList();
 
         var response = recordOperations.CreateRecords(moduleName.ToString(), bodyWrapper, headerInstance2);
-        return RecordsParser.ParseData(response);
+        
+        var parsed = RecordsParser.ParseData(response);
+        return parsed.IsFailure ? parsed.ConvertFailure<Record>() : parsed.Value.Single();
     }
 }
 public enum ZohoModules
