@@ -24,10 +24,13 @@ public static class ZohoItemOperations
         parsedDataCores.Where(v => v.IsFailure)
             .ForEach(c => Log.Error("Error updating record with {Error}", c.Error));
 
+        var combinedResult = parsedDataCores.Combine();
+        var failedCount = parsedDataCores.Count(p => p.IsFailure);
+        
         OriginalWithSameResult<ZohoItemBaseWithId<T>> Get(ZohoItemBaseWithId<T> original, Record? maybeResult)
             => maybeResult != null
                 ? original.Create(original.SetZohoId(maybeResult.Id!.Value))
-                : original.CreateFailure($"Update failed for {original.ZohoId}");
+                : original.CreateFailure($"Update failed for {original.ZohoId} with an error [{combinedResult.Error}]. FailCount: {failedCount}/{zohoItemBase.Count}");
 
         var parsedWithInitial = zohoItemBase
             .Select(i => Get(i, parsedDataCores.SingleOrDefault(pdc => pdc.IsSuccess && pdc.Value.Id == i.ZohoId).Value))
