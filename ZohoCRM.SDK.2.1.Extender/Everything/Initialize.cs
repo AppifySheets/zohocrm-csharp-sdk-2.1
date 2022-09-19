@@ -11,7 +11,7 @@ public static class Initialize
 {
     public static bool IsInitialized { get; private set; }
 
-    public static void SdkInitialize(string clientId, string clientSecret, string grantToken)
+    public static void SdkInitialize(string clientId, string clientSecret, string grantToken, string refreshToken)
     {
         if (IsInitialized) return;
         /*
@@ -21,11 +21,11 @@ public static class Initialize
     */
         var logger = new Logger.Builder()
             .Level(Logger.Levels.ALL)
-            .FilePath("/Users/user_name/Documents/csharp_sdk_log.log")
+            .FilePath("csharp_sdk_log.log")
             .Build();
 
         //Create an UserSignature instance that takes user Email as parameter
-        var user = new UserSignature("eurocreditcrm@gmail.com");
+        var user = new UserSignature("zoho@eurocredit.ge");
 
         /*
     * Configure the environment
@@ -46,6 +46,7 @@ public static class Initialize
             .ClientId(clientId)
             .ClientSecret(clientSecret)
             .GrantToken(grantToken)
+            .RefreshToken(refreshToken)
             //.RedirectURL("redirectURL")
             .Build();
 

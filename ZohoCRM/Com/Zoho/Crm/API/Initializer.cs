@@ -40,6 +40,7 @@ using Com.Zoho.API.Exception;
 using Newtonsoft.Json;
 
 using System.Text;
+using System.Linq;
 
 namespace Com.Zoho.Crm.API
 {
@@ -70,7 +71,7 @@ namespace Com.Zoho.Crm.API
 
             public Builder()
             {
-                if(Initializer.initializer != null)
+                if (Initializer.initializer != null)
                 {
                     user = Initializer.initializer.User;
 
@@ -139,10 +140,10 @@ namespace Com.Zoho.Crm.API
 
             public Builder SDKConfig(SDKConfig sdkConfig)
             {
-			    this.sdkConfig = sdkConfig;
+                this.sdkConfig = sdkConfig;
 
-			    return this;
-		    }
+                return this;
+            }
 
             public Builder RequestProxy(RequestProxy requestProxy)
             {
@@ -153,7 +154,7 @@ namespace Com.Zoho.Crm.API
 
             public Builder ResourcePath(string resourcePath)
             {
-                if(resourcePath != null && !Directory.Exists(resourcePath))
+                if (resourcePath != null && !Directory.Exists(resourcePath))
                 {
                     throw new SDKException(errorMessage, Constants.RESOURCE_PATH_INVALID_ERROR_MESSAGE);
                 }
@@ -167,29 +168,29 @@ namespace Com.Zoho.Crm.API
             {
                 Utility.AssertNotNull(user, errorMessage, Constants.USERSIGNATURE_ERROR_MESSAGE);
 
-			    this.user = user;
+                this.user = user;
 
-			    return this;
-		    }
+                return this;
+            }
 
             public Builder Store(TokenStore store)
             {
-			    this.store = store;
+                this.store = store;
 
-			    return this;
-		    }
+                return this;
+            }
 
             public Builder Environment(Dc.DataCenter.Environment environment)
             {
                 Utility.AssertNotNull(environment, errorMessage, Constants.ENVIRONMENT_ERROR_MESSAGE);
 
-			    this.environment = environment;
+                this.environment = environment;
 
-			    return this;
+                return this;
             }
         }
 
-        private static  ThreadLocal<Initializer> LOCAL = new ThreadLocal<Initializer>();
+        private static ThreadLocal<Initializer> LOCAL = new ThreadLocal<Initializer>();
 
         private static Initializer initializer;
 
@@ -203,7 +204,7 @@ namespace Com.Zoho.Crm.API
 
         public static JObject jsonDetails;
 
-	    private string resourcePath;
+        private string resourcePath;
 
         private RequestProxy requestProxy;
 
@@ -237,8 +238,9 @@ namespace Com.Zoho.Crm.API
                     //         result = reader.ReadToEnd();
                     //     }
                     // }
-                    
-                    var result = System.IO.File.ReadAllText(Constants.JSON_DETAILS_FILE_PATH);
+
+                    //var result = System.IO.File.ReadAllText(Constants.JSON_DETAILS_FILE_PATH);
+                    var result = typeof(Initializer).ReadManifestData(Constants.JSON_DETAILS_FILE_PATH);
 
                     jsonDetails = JObject.Parse(result);
                 }
@@ -265,7 +267,7 @@ namespace Com.Zoho.Crm.API
 
                 SDKLogger.LogInfo(Constants.INITIALIZATION_SUCCESSFUL + initializer.ToString());
             }
-            catch(SDKException e)
+            catch (SDKException e)
             {
                 throw e;
             }
@@ -391,7 +393,7 @@ namespace Com.Zoho.Crm.API
                 return resourcePath;
             }
         }
-        
+
         /// <summary>
         /// This is a getter method to get Proxy information.
         /// </summary>
@@ -403,7 +405,7 @@ namespace Com.Zoho.Crm.API
                 return requestProxy;
             }
         }
-        
+
         /// <summary>
         /// This is a getter method to get the SDK Configuration
         /// </summary>
@@ -425,6 +427,22 @@ namespace Com.Zoho.Crm.API
         public void Dispose()
         {
             ((IDisposable)LOCAL).Dispose();
+        }
+    }
+    public static class Extensions
+    {
+        public static string ReadManifestData(this Type assemblyType, string embeddedFileName) //where TSource : class
+        {
+            var assembly = assemblyType.Assembly;
+            var resourceName = assembly.GetManifestResourceNames().Single(s => s.EndsWith(Path.GetFileName(embeddedFileName), StringComparison.CurrentCultureIgnoreCase));
+
+            using (var stream = assembly.GetManifestResourceStream(resourceName))
+            {
+                if (stream == null) throw new InvalidOperationException("Could not load manifest resource stream.");
+
+                using (var reader = new StreamReader(stream))
+                    return reader.ReadToEnd();
+            }
         }
     }
 }
