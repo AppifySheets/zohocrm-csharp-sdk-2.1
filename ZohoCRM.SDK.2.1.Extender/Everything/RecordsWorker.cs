@@ -18,10 +18,10 @@ public static class RecordsWorker
         // var filterParam = new Param<T>("CRITERIA", "com.zoho.crm.api.Record.SearchRecordsParam");
         // parameterMap.Add(filterParam, value);
 
-         parameterMap.Add(RecordOperations.SearchRecordsParam.CRITERIA, $"{fieldName}:equals:{value}");
+        parameterMap.Add(RecordOperations.SearchRecordsParam.CRITERIA, $"{fieldName}:equals:{value}");
 
         var result = recordOperations.SearchRecords(moduleName.ToString(), parameterMap, headerInstance);
-        
+
         var companyRecordsMany = RecordsParser.ParseData(result);
         return companyRecordsMany;
     }
@@ -31,7 +31,7 @@ public static class RecordsWorker
         // var recordResult = GetRecordsBy(moduleName, fieldName, value);
 
         // if (recordResult.IsFailure) return recordResult.ConvertFailure();
-        
+
         var recordOperations = new RecordOperations();
 
         // Result<IEnumerable<RecordsParser.RecordT>> GetRecordsBy() => RecordsWorker.GetRecordsBy(moduleName, fieldName, value);
@@ -62,7 +62,7 @@ public static class RecordsWorker
 
         return Result.Success();
     }
-    
+
     public static Result<IEnumerable<RecordsParser.RecordT>> GetRecords(this ZohoModules moduleName)
     {
         var recordOperations = new RecordOperations();
@@ -72,7 +72,7 @@ public static class RecordsWorker
         var companyRecordsMany = RecordsParser.ParseData(recordOperations.GetRecords(moduleName.ToString(), parameterMap, headerInstance));
         return companyRecordsMany;
     }
-    
+
     public static Result<RecordsParser.RecordT> GetSingleRecord(this ZohoModules moduleName, long id)
     {
         var recordOperations = new RecordOperations();
@@ -92,14 +92,44 @@ public static class RecordsWorker
         var recordOperations = new RecordOperations();
 
         var headerInstance2 = new HeaderMap();
-        bodyWrapper.Data = new[] { record }.ToList();
+        bodyWrapper.Data = new[] {record}.ToList();
 
         var response = recordOperations.CreateRecords(moduleName.ToString(), bodyWrapper, headerInstance2);
-        
+
+        var parsed = RecordsParser.ParseData(response);
+        return parsed.IsFailure ? parsed.ConvertFailure<Record>() : parsed.Value.Single();
+    }
+
+    public static Result<Record> UpdateRecord(this ZohoModules moduleName, Record record)
+    {
+        var bodyWrapper = new BodyWrapper();
+
+        var recordOperations = new RecordOperations();
+
+        var headerInstance2 = new HeaderMap();
+        bodyWrapper.Data = new[] {record}.ToList();
+
+        var response = recordOperations.UpdateRecord(record.Id, moduleName.ToString(), bodyWrapper, headerInstance2);
+
+        var parsed = RecordsParser.ParseData(response);
+        return parsed.IsFailure ? parsed.ConvertFailure<Record>() : parsed.Value.Single();
+    }
+    public static Result<Record> UpdateRecords(this ZohoModules moduleName, IEnumerable<Record> record)
+    {
+        // bodyWrapper.Data = new[] {record}.ToList();
+
+        var bodyWrapper = new BodyWrapper();
+        var recordOperations = new RecordOperations();
+        var headerInstance2 = new HeaderMap();
+        bodyWrapper.Data = record.ToList();
+
+        var response = recordOperations.UpdateRecords(moduleName.ToString(), bodyWrapper, headerInstance2);
+
         var parsed = RecordsParser.ParseData(response);
         return parsed.IsFailure ? parsed.ConvertFailure<Record>() : parsed.Value.Single();
     }
 }
+
 public enum ZohoModules
 {
     Accounts,
