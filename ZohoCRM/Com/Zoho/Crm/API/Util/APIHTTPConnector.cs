@@ -13,7 +13,6 @@ using Com.Zoho.API.Exception;
 using Com.Zoho.Crm.API.Logger;
 
 using System.Linq;
-
 using System.Text;
 
 namespace Com.Zoho.Crm.API.Util
@@ -58,6 +57,7 @@ namespace Com.Zoho.Crm.API.Util
         /// <value>A string containing the API Request URL.</value>
         public string URL
         {
+            get => url;
             set
             {
                 url = value;

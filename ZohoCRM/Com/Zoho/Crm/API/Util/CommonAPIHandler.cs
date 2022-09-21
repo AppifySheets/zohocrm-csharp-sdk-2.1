@@ -15,6 +15,7 @@ using Newtonsoft.Json;
 using System.IO;
 
 using System.Linq;
+using System.Net.Http;
 
 namespace Com.Zoho.Crm.API.Util
 {
@@ -230,7 +231,7 @@ namespace Com.Zoho.Crm.API.Util
                 httpMethod = value;
             }
         }
-
+        
         /// <summary>
         /// This method is used in constructing API request and response details. To make the Zoho CRM API calls.
         /// </summary>
@@ -334,10 +335,15 @@ namespace Com.Zoho.Crm.API.Util
 
             try
             {
-                connector.AddHeader(Constants.ZOHO_SDK,  Environment.OSVersion.Platform.ToString() + "/" +
-                                                    Environment.OSVersion.Version.ToString() + "/csharp-2.1/" +
-                                                    Environment.Version.Major.ToString() + "." +
-                                                    Environment.Version.Minor.ToString() + ":" + Constants.SDK_VERSION);
+                // connector.AddHeader(Constants.ZOHO_SDK,  Environment.OSVersion.Platform.ToString() + "/" +
+                //                                     Environment.OSVersion.Version.ToString() + "/csharp-2.1/" +
+                //                                     Environment.Version.Major.ToString() + "." +
+                //                                     Environment.Version.Minor.ToString() + ":" + Constants.SDK_VERSION);
+                
+                // connector.AddHeader(Constants.ZOHO_SDK,  Environment.OSVersion.Platform.ToString() + "/" +
+                //                                          Environment.OSVersion.Version.ToString() + "/csharp-2.1/" +
+                //                                          Environment.Version.Major.ToString() + "." +
+                //                                          Environment.Version.Minor.ToString() + ":" + Constants.SDK_VERSION);
 
                 HttpWebResponse response = connector.FireRequest(convertInstance);
 
