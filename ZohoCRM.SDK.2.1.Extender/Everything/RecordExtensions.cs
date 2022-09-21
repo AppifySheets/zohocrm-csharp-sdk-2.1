@@ -41,13 +41,13 @@ public static class RecordExtensions
 
     public static Record SetOwnerX(this Record record, long ownerId)
     {
-        return record;
+        // return record;
 
         // var dummyRecord = new Record();
         // dummyRecord.AddFieldValue(Products.OWNER, ownerId);
 
         // record.AddFieldValue(Products.OWNER, ownerId);
-        record.AddKeyValue(Products.OWNER.APIName, new User { Id = ownerId });
+        record.AddKeyValue(Products.OWNER.APIName, new { id = ownerId });
         return record;
     }
 
