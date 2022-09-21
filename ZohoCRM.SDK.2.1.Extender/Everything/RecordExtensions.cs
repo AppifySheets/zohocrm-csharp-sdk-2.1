@@ -1,4 +1,5 @@
-﻿using Com.Zoho.Crm.API.Record;
+﻿using Com.Zoho.Crm.API.Currencies;
+using Com.Zoho.Crm.API.Record;
 using Com.Zoho.Crm.API.Users;
 using Com.Zoho.Crm.API.Util;
 
@@ -23,6 +24,13 @@ public static class RecordExtensions
         return record;
     }
 
+    public static Record AddCurrencyValue(this Record record, string fieldName, string choiceValue)
+    {
+        record.AddFieldValue(new Field<Currency>(fieldName), new Currency { Name = choiceValue });
+
+        return record;
+    }
+
     public static Record AddRecordValue(this Record record, string fieldName, long recordId)
     {
         var dummyRecord = new Record();
@@ -31,25 +39,27 @@ public static class RecordExtensions
         return record;
     }
 
-    // public static Record SetOwner(this Record record, long ownerId)
-    // {
-    //     // var dummyRecord = new Record();
-    //     // dummyRecord.AddFieldValue(Products.OWNER, ownerId);
-    //     
-    //     // record.AddFieldValue(Products.OWNER, ownerId);
-    //     record.AddKeyValue(Products.OWNER.APIName, new User{Id = ownerId});
-    //     return record;
-    // }
-
     public static Record SetOwnerX(this Record record, long ownerId)
     {
+        return record;
+
         // var dummyRecord = new Record();
         // dummyRecord.AddFieldValue(Products.OWNER, ownerId);
 
         // record.AddFieldValue(Products.OWNER, ownerId);
-        record.AddKeyValue("Owner", new {id = ownerId});
+        record.AddKeyValue(Products.OWNER.APIName, new User { Id = ownerId });
         return record;
     }
+
+    // public static Record SetOwnerX(this Record record, long ownerId)
+    // {
+    //     // var dummyRecord = new Record();
+    //     // dummyRecord.AddFieldValue(Products.OWNER, ownerId);
+    //
+    //     // record.AddFieldValue(Products.OWNER, ownerId);
+    //     record.AddKeyValue("Owner", new {id = ownerId});
+    //     return record;
+    // }
 
     public static Record AddRecordValue(this Record record, string fieldName, Record value)
     {
@@ -60,7 +70,7 @@ public static class RecordExtensions
     public static Record AddRecordValue<T>(this Record record, string fieldName, ZohoItemBaseWithId<T>? zohoItem) where T : ZohoItemBase
     {
         if (zohoItem != null)
-            record.AddKeyValue(fieldName, new {id = zohoItem?.ZohoRecord.Id});
+            record.AddKeyValue(fieldName, new { id = zohoItem?.ZohoRecord.Id });
         return record;
     }
 
