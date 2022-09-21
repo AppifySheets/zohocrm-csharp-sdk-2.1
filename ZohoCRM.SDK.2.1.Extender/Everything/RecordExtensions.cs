@@ -30,14 +30,24 @@ public static class RecordExtensions
         record.AddFieldValue(new Field<Record>(fieldName), dummyRecord);
         return record;
     }
-    
-    public static Record SetOwner(this Record record, long ownerId)
+
+    // public static Record SetOwner(this Record record, long ownerId)
+    // {
+    //     // var dummyRecord = new Record();
+    //     // dummyRecord.AddFieldValue(Products.OWNER, ownerId);
+    //     
+    //     // record.AddFieldValue(Products.OWNER, ownerId);
+    //     record.AddKeyValue(Products.OWNER.APIName, new User{Id = ownerId});
+    //     return record;
+    // }
+
+    public static Record SetOwnerX(this Record record, long ownerId)
     {
         // var dummyRecord = new Record();
         // dummyRecord.AddFieldValue(Products.OWNER, ownerId);
-        
+
         // record.AddFieldValue(Products.OWNER, ownerId);
-        record.AddKeyValue(Products.OWNER.APIName, new User{Id = ownerId});
+        record.AddKeyValue("Owner", new {id = ownerId});
         return record;
     }
 
@@ -49,7 +59,8 @@ public static class RecordExtensions
 
     public static Record AddRecordValue<T>(this Record record, string fieldName, ZohoItemBaseWithId<T>? zohoItem) where T : ZohoItemBase
     {
-        record.AddFieldValue(new Field<Record?>(fieldName), zohoItem?.ZohoRecord);
+        if (zohoItem != null)
+            record.AddKeyValue(fieldName, new {id = zohoItem?.ZohoRecord.Id});
         return record;
     }
 
@@ -59,14 +70,14 @@ public static class RecordExtensions
 
         return record;
     }
-    
+
     public static Record AddSubmoduleValue<T>(this Record record, string fieldName, T fieldValue)
     {
         record.AddFieldValue(new Field<T>(fieldName), fieldValue);
 
         return record;
     }
-    
+
     public static Record AddFieldValueAsString<T>(this Record record, string fieldName, T fieldValue)
     {
         record.AddFieldValue(new Field<string?>(fieldName), fieldValue?.ToString());
@@ -87,3 +98,8 @@ public static class RecordExtensions
     // public static (Result<Record> recordResult, TZohoItemBase original) SaveWithOriginal<TZohoItemBase>(this TZohoItemBase zohoItemBase) where TZohoItemBase : ZohoItemBase =>
     //     (ZohoItemOperations.Save(zohoItemBase), zohoItemBase);
 }
+
+// public class RecordWithJustId
+// {
+//     public int id { get; init; }
+// }

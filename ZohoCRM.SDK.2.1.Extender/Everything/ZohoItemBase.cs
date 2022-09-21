@@ -63,8 +63,10 @@ public class ZohoItemBaseWithId<T> where T : ZohoItemBase
 
         var item = Item.CreateRecord(record);
 
+        // return item;
+        
         return Item.OwnerId.HasValue
-            ? item.SetOwner(Item.OwnerId.Value)
+            ? item.SetOwnerX(Item.OwnerId.Value)
             : item;
     }
 

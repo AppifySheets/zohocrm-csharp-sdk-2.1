@@ -209,7 +209,7 @@ public static class ZohoItemOperations
                                                             parsedDataCore.Original.Item.ZohoModule);
 
                                                         var zohoModuleName = parsedDataCore.Original.Item.ZohoModule.ToString();
-                                                        zohoCounters.IncreaseCountForModule(zohoModuleName, ZohoOperationType.Update, parsedDataCores.Count);
+                                                        zohoCounters.IncreaseCountForModule(zohoModuleName + "-Correction", ZohoOperationType.Update, parsedDataCores.Count);
 
                                                         return tuple.ro.UpdateRecord(existingRecord.Value.Record.Id, zohoModuleName, tuple.bw, tuple.hm);
                                                     })),

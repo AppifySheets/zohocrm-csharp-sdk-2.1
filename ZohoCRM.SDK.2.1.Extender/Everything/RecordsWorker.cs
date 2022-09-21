@@ -114,7 +114,7 @@ public static class RecordsWorker
         var parsed = RecordsParser.ParseData(response);
         return parsed.IsFailure ? parsed.ConvertFailure<Record>() : parsed.Value.Single();
     }
-    public static Result<Record> UpdateRecords(this ZohoModules moduleName, IEnumerable<Record> record)
+    public static Result<IEnumerable<Result<Record>>> UpdateRecords(this ZohoModules moduleName, IEnumerable<Record> record)
     {
         // bodyWrapper.Data = new[] {record}.ToList();
 
@@ -126,7 +126,7 @@ public static class RecordsWorker
         var response = recordOperations.UpdateRecords(moduleName.ToString(), bodyWrapper, headerInstance2);
 
         var parsed = RecordsParser.ParseData(response);
-        return parsed.IsFailure ? parsed.ConvertFailure<Record>() : parsed.Value.Single();
+        return parsed;
     }
 }
 
