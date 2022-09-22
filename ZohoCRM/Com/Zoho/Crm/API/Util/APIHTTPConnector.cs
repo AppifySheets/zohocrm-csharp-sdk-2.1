@@ -187,9 +187,6 @@ namespace Com.Zoho.Crm.API.Util
                 // This one is important so we can read the stream from the beginning.
                 memoryStream.Seek(0, SeekOrigin.Begin);
 
-                // Reset the position to the beginning of the stream again
-                memoryStream.Seek(0, SeekOrigin.Begin);
-
                 using var reader = new StreamReader(memoryStream, encoding);
 
                 var responseText = reader.ReadToEnd();
