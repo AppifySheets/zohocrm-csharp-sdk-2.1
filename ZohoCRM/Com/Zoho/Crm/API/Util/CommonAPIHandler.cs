@@ -306,13 +306,13 @@ namespace Com.Zoho.Crm.API.Util
 
             if (contentType != null && Constants.GENERATE_REQUEST_BODY.Contains(httpMethod.ToUpper()))
             {
-                object request;
+                object localRequest;
 
                 try
                 {
                     convertInstance = GetConverterClassInstance(contentType.ToLower());
 
-                    request = convertInstance.FormRequest(this.request, this.request.GetType().FullName, null, null);
+                    localRequest = request;// convertInstance.FormRequest(this.request, this.request.GetType().FullName, null, null);
                 }
                 catch (SDKException e)
                 {
@@ -329,7 +329,7 @@ namespace Com.Zoho.Crm.API.Util
                     throw exception;
                 }
 
-                connector.RequestBody = request;
+                connector.RequestBody = localRequest;
             }
 
             try

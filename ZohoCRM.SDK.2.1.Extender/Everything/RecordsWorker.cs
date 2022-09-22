@@ -87,12 +87,11 @@ public static class RecordsWorker
 
     public static Result<Record> CreateRecord(this ZohoModules moduleName, Record record)
     {
-        var bodyWrapper = new BodyWrapper();
+        var bodyWrapper = new BodyWrapper(record.ToEnumerable());
 
         var recordOperations = new RecordOperations();
 
         var headerInstance2 = new HeaderMap();
-        bodyWrapper.Data = new[] {record}.ToList();
 
         var response = recordOperations.CreateRecords(moduleName.ToString(), bodyWrapper, headerInstance2);
 
@@ -102,12 +101,11 @@ public static class RecordsWorker
 
     public static Result<Record> UpdateRecord(this ZohoModules moduleName, Record record)
     {
-        var bodyWrapper = new BodyWrapper();
+        var bodyWrapper = new BodyWrapper(new[] {record});
 
         var recordOperations = new RecordOperations();
 
         var headerInstance2 = new HeaderMap();
-        bodyWrapper.Data = new[] {record}.ToList();
 
         var response = recordOperations.UpdateRecord(record.Id, moduleName.ToString(), bodyWrapper, headerInstance2);
 
@@ -118,10 +116,9 @@ public static class RecordsWorker
     {
         // bodyWrapper.Data = new[] {record}.ToList();
 
-        var bodyWrapper = new BodyWrapper();
+        var bodyWrapper = new BodyWrapper(record);
         var recordOperations = new RecordOperations();
         var headerInstance2 = new HeaderMap();
-        bodyWrapper.Data = record.ToList();
 
         var response = recordOperations.UpdateRecords(moduleName.ToString(), bodyWrapper, headerInstance2);
 

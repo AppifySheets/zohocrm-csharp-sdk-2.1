@@ -175,23 +175,23 @@ namespace Com.Zoho.Crm.API.Util
                 response = (HttpWebResponse) e.Response;
             }
 
-            // ReSharper disable once InvertIf
-            if (response.StatusCode != HttpStatusCode.OK)
-            {
-                var encoding = Encoding.ASCII;
-                var stream = response.GetResponseStream()!;
-
-                using var memoryStream = new MemoryStream();
-                stream.CopyTo(memoryStream);
-
-                // This one is important so we can read the stream from the beginning.
-                memoryStream.Seek(0, SeekOrigin.Begin);
-
-                using var reader = new StreamReader(memoryStream, encoding);
-
-                var responseText = reader.ReadToEnd();
-                Log.Information("{@ResponseText}, {@RequestBody}", responseText, requestBody?.ToString());
-            }
+            // // ReSharper disable once InvertIf
+            // if (response.StatusCode != HttpStatusCode.OK)
+            // {
+            //     var encoding = Encoding.ASCII;
+            //     var stream = response.GetResponseStream()!;
+            //
+            //     using var memoryStream = new MemoryStream();
+            //     stream.CopyTo(memoryStream);
+            //
+            //     // This one is important so we can read the stream from the beginning.
+            //     memoryStream.Seek(0, SeekOrigin.Begin);
+            //
+            //     using var reader = new StreamReader(memoryStream, encoding);
+            //
+            //     var responseText = reader.ReadToEnd();
+            //     Log.Information("{@ResponseText}, {@RequestBody}", responseText, requestBody?.ToString());
+            // }
 
             return response;
         }

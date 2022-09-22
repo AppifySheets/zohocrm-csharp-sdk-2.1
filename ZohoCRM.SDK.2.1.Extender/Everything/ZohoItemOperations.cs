@@ -273,10 +273,9 @@ public static class ZohoItemOperations
     {
         if (!Initialize.IsInitialized) throw new InvalidOperationException("Please initialize the SDK first!");
 
-        var bodyWrapper = new BodyWrapper();
+        var bodyWrapper = new BodyWrapper(zohoItemBase.ZohoRecord.ToEnumerable());
         var recordOperations = new RecordOperations();
         var headerInstance2 = new HeaderMap();
-        bodyWrapper.Data = new[] {zohoItemBase.ZohoRecord}.ToList();
 
         Result<Record> ParseResultCore(Func<APIResponse<ActionHandler>> parseFunc)
         {
@@ -327,10 +326,9 @@ public static class ZohoItemOperations
 
                 if (itemBasesOrdered.Count > 100) throw new InvalidOperationException("Can't process more than 100 items!");
 
-                var bodyWrapper = new BodyWrapper();
+                var bodyWrapper = new BodyWrapper(itemBasesOrdered.Select(z => z.zohoItemBase.ZohoRecord));
                 var recordOperations = new RecordOperations();
                 var headerInstance2 = new HeaderMap();
-                bodyWrapper.Data = itemBasesOrdered.Select(z => z.zohoItemBase.ZohoRecord).ToList();
 
                 zohoCounters.IncreaseCountForModuleBy(zohoModule.Single().ToString(), ZohoOperationType.Update, zohoItemBasesOrderedAllArol.Count, itemBasesOrdered.Count);
 
