@@ -81,6 +81,13 @@ public static class RecordExtensions
         return record;
     }
 
+    public static Record AddKeyValueX<T>(this Record record, string fieldName, T? keyValue)
+    {
+        if (keyValue != null)
+            record.AddKeyValue(fieldName, keyValue);
+        return record;
+    }
+    
     public static Record AddSubmoduleValue<T>(this Record record, string fieldName, T fieldValue)
     {
         record.AddFieldValue(new Field<T>(fieldName), fieldValue);

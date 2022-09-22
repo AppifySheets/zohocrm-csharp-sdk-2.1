@@ -1,20 +1,14 @@
 ﻿using System;
-
 using System.Collections.Generic;
-
+using System.IO;
 using System.Net;
-
 using System.Xml;
-
 using Newtonsoft.Json;
-
 using Com.Zoho.API.Exception;
-
 using Com.Zoho.Crm.API.Logger;
-
 using System.Linq;
-
 using System.Text;
+using Serilog;
 
 namespace Com.Zoho.Crm.API.Util
 {
@@ -42,14 +36,8 @@ namespace Com.Zoho.Crm.API.Util
         /// <returns>A string representing the ContentType.</returns>
         public string ContentType
         {
-            get
-            {
-                return contentType;
-            }
-            set
-            {
-                contentType = value;
-            }
+            get { return contentType; }
+            set { contentType = value; }
         }
 
         /// <summary>
@@ -58,10 +46,7 @@ namespace Com.Zoho.Crm.API.Util
         /// <value>A string containing the API Request URL.</value>
         public string URL
         {
-            set
-            {
-                url = value;
-            }
+            set { url = value; }
         }
 
         /// <summary>
@@ -70,10 +55,7 @@ namespace Com.Zoho.Crm.API.Util
         /// <value>A string containing the API request method.</value>
         public string RequestMethod
         {
-            set
-            {
-                requestMethod = value;
-            }
+            set { requestMethod = value; }
         }
 
         /// <summary>
@@ -83,14 +65,8 @@ namespace Com.Zoho.Crm.API.Util
         /// <returns>A Dictionary&lt;string, string&gt; representing the API request headers.</returns>
         public Dictionary<string, string> Headers
         {
-            get
-            {
-                return headers;
-            }
-            set
-            {
-                headers = value;
-            }
+            get { return headers; }
+            set { headers = value; }
         }
 
         /// <summary>
@@ -110,14 +86,8 @@ namespace Com.Zoho.Crm.API.Util
         /// <returns>A Dictionary&lt;string, string&gt; representing the API request parameters.</returns>
         public Dictionary<string, string> Params
         {
-            get
-            {
-                return parameters;
-            }
-            set
-            {
-                parameters = value;
-            }
+            get { return parameters; }
+            set { parameters = value; }
         }
 
         /// <summary>
@@ -136,10 +106,7 @@ namespace Com.Zoho.Crm.API.Util
         /// <value>A object containing the API request body.</value>
         public object RequestBody
         {
-            set
-            {
-                requestBody = value;
-            }
+            set { requestBody = value; }
         }
 
         /// <summary>
@@ -151,13 +118,13 @@ namespace Com.Zoho.Crm.API.Util
         {
             SetQueryParams();
 
-            HttpWebRequest requestObj = (HttpWebRequest)WebRequest.Create(url);
+            HttpWebRequest requestObj = (HttpWebRequest) WebRequest.Create(url);
 
             requestObj.Timeout = (Initializer.GetInitializer().SDKConfig.Timeout) * 1000;
 
             RequestProxy requestProxy = Initializer.GetInitializer().RequestProxy;
 
-            if(requestProxy != null)
+            if (requestProxy != null)
             {
                 //Validate proxy address
                 var proxyURI = new Uri(string.Format("{0}:{1}", requestProxy.Host, requestProxy.Port));
@@ -185,7 +152,7 @@ namespace Com.Zoho.Crm.API.Util
 
             SetQueryHeaders(ref requestObj);
 
-            if (requestBody !=  null)
+            if (requestBody != null)
             {
                 converterInstance.AppendToRequest(requestObj, requestBody);
             }
@@ -196,13 +163,37 @@ namespace Com.Zoho.Crm.API.Util
 
             try
             {
-                response = (HttpWebResponse)requestObj.GetResponse();
+                response = (HttpWebResponse) requestObj.GetResponse();
             }
             catch (WebException e)
             {
-                if (e.Response == null) { throw; }
+                if (e.Response == null)
+                {
+                    throw;
+                }
 
-                response = (HttpWebResponse)e.Response;
+                response = (HttpWebResponse) e.Response;
+            }
+
+            // ReSharper disable once InvertIf
+            if (response.StatusCode != HttpStatusCode.OK)
+            {
+                var encoding = Encoding.ASCII;
+                var stream = response.GetResponseStream()!;
+
+                using var memoryStream = new MemoryStream();
+                stream.CopyTo(memoryStream);
+
+                // This one is important so we can read the stream from the beginning.
+                memoryStream.Seek(0, SeekOrigin.Begin);
+
+                // Reset the position to the beginning of the stream again
+                memoryStream.Seek(0, SeekOrigin.Begin);
+
+                using var reader = new StreamReader(memoryStream, encoding);
+
+                var responseText = reader.ReadToEnd();
+                Log.Information("{@ResponseText}, {@RequestBody}", responseText, requestBody?.ToString());
             }
 
             return response;
@@ -270,7 +261,10 @@ namespace Com.Zoho.Crm.API.Util
 
         private void SetQueryParams()
         {
-            if (Params.Count == 0) { return; }
+            if (Params.Count == 0)
+            {
+                return;
+            }
 
             this.url = url + "?" + string.Join("&", Params.Select(pp => pp.Key + "=" + Uri.EscapeDataString(pp.Value)));
         }
@@ -315,6 +309,7 @@ namespace Com.Zoho.Crm.API.Util
 
             return stringBuilder.ToString();
         }
+
         private string ProxyLog(RequestProxy requestProxy)
         {
             StringBuilder proxyStringBuilder = new StringBuilder();
